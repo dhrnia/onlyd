@@ -2,10 +2,30 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'><rect width='24' height='24' rx='6' fill='%23171717'/><path d='M8 6h4.5a5.5 5.5 0 0 1 0 11H8V6zm3 8.5h1.5a3 3 0 0 0 0-6H11v6z' fill='white'/></svg>" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>OnlyD Hub — All-in-One Suite</title>
-    <meta name="description" content="All-in-one minimal monochrome suite: Shelf, Budget, Contacts, Vault, Wishlist with multi-device sync" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- Title & SEO -->
+    <title>OnlyD</title>
+    <meta name="description" content="Minimal Monochrome Suite — Shelf, Budget, Contacts, Vault & Wishlist" />
+
+    <!-- Web App Manifest (PWA) -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Theme & Status Bar Colors -->
+    <meta name="theme-color" content="#171717" />
+    <meta name="background-color" content="#f7f7f5" />
+    
+    <!-- Apple iOS PWA Capabilities -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="OnlyD" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon-512.svg" />
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -13,5 +33,16 @@
   <body class="bg-[#f7f7f5] text-[#171717] antialiased min-h-screen selection:bg-black selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- Register Service Worker for PWA Installation -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((reg) => console.log('PWA ServiceWorker registered:', reg.scope))
+            .catch((err) => console.warn('PWA ServiceWorker registration failed:', err));
+        });
+      }
+    </script>
   </body>
 </html>
