@@ -120,19 +120,49 @@ export function AppProvider({ children }) {
     }
   }, []);
 
-  // Sync Engine (Bidirectional merge)
-  const triggerSync = useCallback(async (customData = null) => {
+  const isPushingRef = useRef(false);
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  // Pull latest updates from SQLite server
+  const pullLatest = useCallback(async (notifyIfCurrent = false) => {
+    if (isPushingRef.current) return;
+    try {
+      const res = await fetch('/api/data');
+      if (!res.ok) throw new Error('Failed to fetch from server');
+      const serverDb = await res.json();
+      if (serverDb && serverDb.shelf) {
+        const serverTime = serverDb.meta?.lastUpdated;
+        const localTime = dataRef.current?.meta?.lastUpdated;
+
+        if (!localTime || serverTime !== localTime) {
+          setData(serverDb);
+          setLastSynced(new Date());
+          setSyncState('synced');
+          if (notifyIfCurrent) showToast('Synchronized with server');
+        } else {
+          setSyncState('synced');
+          if (notifyIfCurrent) showToast('Already up to date');
+        }
+      }
+    } catch {
+      setSyncState('offline');
+    }
+  }, [showToast]);
+
+  // Push local updates to SQLite server
+  const pushUpdate = useCallback(async (updatedData) => {
+    isPushingRef.current = true;
     setSyncState('syncing');
     try {
-      const payload = customData || data;
       const res = await fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(updatedData)
       });
-
-      if (!res.ok) throw new Error('Sync endpoint returned ' + res.status);
-
+      if (!res.ok) throw new Error('Sync failed with status ' + res.status);
       const result = await res.json();
       if (result.success && result.data) {
         setData(result.data);
@@ -144,70 +174,69 @@ export function AppProvider({ children }) {
     } catch (err) {
       console.warn('Sync connection error:', err);
       setSyncState('offline');
+    } finally {
+      isPushingRef.current = false;
     }
-  }, [data]);
+  }, []);
 
-  // Initial Data Fetch
-  useEffect(() => {
-    let isMounted = true;
-    async function init() {
-      await fetchStatus();
-      try {
-        setSyncState('syncing');
-        const res = await fetch('/api/data');
-        if (res.ok) {
-          const serverDb = await res.json();
-          if (isMounted && serverDb && serverDb.shelf) {
-            setData(serverDb);
-            setLastSynced(new Date());
-            setSyncState('synced');
-          }
-        } else {
-          if (isMounted) setSyncState('offline');
+  // Update local state and immediately push to server
+  const updateAndSync = useCallback((updater) => {
+    const now = new Date().toISOString();
+    setData(prev => {
+      const updated = updater(prev);
+      const withTimestamp = {
+        ...updated,
+        meta: {
+          ...(updated.meta || {}),
+          lastUpdated: now
         }
-      } catch {
-        if (isMounted) setSyncState('offline');
-      }
-    }
-    init();
-    return () => { isMounted = false; };
-  }, [fetchStatus]);
+      };
+      // Immediately push to SQLite server
+      pushUpdate(withTimestamp);
+      return withTimestamp;
+    });
+  }, [pushUpdate]);
 
-  // Background auto-sync interval (every 8 seconds) and on window focus
+  // Manual Trigger Sync (called by Header sync button)
+  const triggerSync = useCallback(async (customData = null) => {
+    if (customData) {
+      await pushUpdate(customData);
+    } else {
+      await pullLatest(true);
+    }
+  }, [pushUpdate, pullLatest]);
+
+  // Initial Data Fetch on Mount
+  useEffect(() => {
+    fetchStatus();
+    pullLatest();
+  }, [fetchStatus, pullLatest]);
+
+  // Real-time background poll (every 3 seconds) & on window focus/online/tab visibility
   useEffect(() => {
     const interval = setInterval(() => {
-      if (navigator.onLine) {
-        triggerSync();
-      } else {
-        setSyncState('offline');
+      if (navigator.onLine && document.visibilityState === 'visible') {
+        pullLatest();
       }
-    }, 8000);
+    }, 3000);
 
-    const onFocus = () => {
-      if (navigator.onLine) triggerSync();
+    const onWake = () => {
+      if (navigator.onLine) pullLatest();
     };
 
-    window.addEventListener('focus', onFocus);
-    window.addEventListener('online', onFocus);
+    window.addEventListener('focus', onWake);
+    window.addEventListener('online', onWake);
+    document.addEventListener('visibilitychange', onWake);
     window.addEventListener('offline', () => setSyncState('offline'));
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('online', onFocus);
+      window.removeEventListener('focus', onWake);
+      window.removeEventListener('online', onWake);
+      document.removeEventListener('visibilitychange', onWake);
       window.removeEventListener('offline', () => setSyncState('offline'));
     };
-  }, [triggerSync]);
-
-  // Helper for optimistic update followed by push sync
-  const updateAndSync = useCallback((updater) => {
-    setData((prev) => {
-      const updated = updater(prev);
-      // Trigger background sync with updated state
-      setTimeout(() => triggerSync(updated), 50);
-      return updated;
-    });
-  }, [triggerSync]);
+  }, [pullLatest]);
 
   // ==========================================
   // APP SPECIFIC CRUD ACTIONS
