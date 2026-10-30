@@ -59,28 +59,6 @@ export function Header() {
             </button>
           </div>
 
-          {/* Center: Desktop Navigation Tabs */}
-          <nav className="hidden lg:flex items-center gap-1 rounded-2xl border border-black/10 bg-white p-1 shadow-xs">
-            {APPS.map((app) => {
-              const Icon = app.icon;
-              const isActive = currentApp === app.id;
-              return (
-                <button
-                  key={app.id}
-                  onClick={() => handleNav(app.id)}
-                  className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-medium transition ${
-                    isActive
-                      ? 'bg-black text-white shadow-xs'
-                      : 'text-black/60 hover:bg-black/5 hover:text-black'
-                  }`}
-                >
-                  <Icon size={14} />
-                  <span>{app.name}</span>
-                </button>
-              );
-            })}
-          </nav>
-
           {/* Right: Sync Status & Device Sync */}
           <div className="flex items-center gap-2">
             {/* Sync Status Badge */}
