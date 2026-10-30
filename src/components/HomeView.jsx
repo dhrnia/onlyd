@@ -5,7 +5,8 @@ import {
   Users,
   KeyRound,
   Gift,
-  Briefcase
+  Briefcase,
+  CalendarHeart
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -18,12 +19,13 @@ export function HomeView() {
     { id: 'contacts', name: 'Contacts', icon: Users },
     { id: 'vault', name: 'Vault', icon: KeyRound },
     { id: 'wishlist', name: 'Wishlist', icon: Gift },
-    { id: 'jobs', name: 'Jobs', icon: Briefcase }
+    { id: 'jobs', name: 'Jobs', icon: Briefcase },
+    { id: 'period', name: 'Period', icon: CalendarHeart }
   ];
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-6">
+    <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
         {apps.map((app) => {
           const Icon = app.icon;
           return (

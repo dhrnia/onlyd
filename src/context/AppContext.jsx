@@ -24,6 +24,13 @@ const INITIAL_DATA = {
     categories: ["Tech", "Workstation", "Books", "Lifestyle", "Fashion", "Other"]
   },
   jobs: [],
+  period: {
+    settings: {
+      cycleDuration: 28,
+      periodDuration: 5
+    },
+    logs: []
+  },
   meta: {
     version: "1.0",
     lastUpdated: null
@@ -34,7 +41,7 @@ export function AppProvider({ children }) {
   // Navigation
   const [currentApp, setCurrentApp] = useState(() => {
     const hash = window.location.hash.replace('#/', '').replace('#', '');
-    return ['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs'].includes(hash) ? hash : 'home';
+    return ['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs', 'period'].includes(hash) ? hash : 'home';
   });
 
   // Main Data State (cached in localStorage)
@@ -71,7 +78,7 @@ export function AppProvider({ children }) {
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace('#/', '').replace('#', '');
-      if (['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs'].includes(hash)) {
+      if (['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs', 'period'].includes(hash)) {
         setCurrentApp(hash);
       } else {
         setCurrentApp('home');
@@ -659,6 +666,62 @@ export function AppProvider({ children }) {
     showToast('Application removed');
   };
 
+  // Period Tracker Methods
+  const updatePeriodSettings = (newSettings) => {
+    updateAndSync(prev => ({
+      ...prev,
+      period: {
+        ...(prev.period || {}),
+        settings: {
+          ...(prev.period?.settings || { cycleDuration: 28, periodDuration: 5 }),
+          ...newSettings
+        }
+      }
+    }));
+    showToast('Cycle settings updated');
+  };
+
+  const addPeriodLog = (log) => {
+    const newLog = {
+      ...log,
+      id: log.id || `period-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSync(prev => ({
+      ...prev,
+      period: {
+        ...(prev.period || {}),
+        logs: [newLog, ...(prev.period?.logs || [])].sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
+      }
+    }));
+    showToast('Period recorded');
+  };
+
+  const updatePeriodLog = (id, updates) => {
+    updateAndSync(prev => ({
+      ...prev,
+      period: {
+        ...(prev.period || {}),
+        logs: (prev.period?.logs || [])
+          .map(l => (l.id === id ? { ...l, ...updates, updatedAt: new Date().toISOString() } : l))
+          .sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
+      }
+    }));
+    showToast('Period log updated');
+  };
+
+  const deletePeriodLog = (id) => {
+    updateAndSync(prev => ({
+      ...prev,
+      period: {
+        ...(prev.period || {}),
+        logs: (prev.period?.logs || []).filter(l => l.id !== id)
+      }
+    }));
+    showToast('Period log deleted');
+  };
+
   // Full Import JSON
   const importDatabase = async (jsonObj) => {
     try {
@@ -735,6 +798,12 @@ export function AppProvider({ children }) {
         addJobApplication,
         updateJobApplication,
         deleteJobApplication,
+
+        // Period Tracker
+        updatePeriodSettings,
+        addPeriodLog,
+        updatePeriodLog,
+        deletePeriodLog,
 
         // Import
         importDatabase

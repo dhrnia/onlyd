@@ -178,6 +178,24 @@ export async function initDb() {
       updatedAt TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS period_settings (
+      id TEXT PRIMARY KEY,
+      cycleDuration INTEGER DEFAULT 28,
+      periodDuration INTEGER DEFAULT 5,
+      updatedAt TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS period_logs (
+      id TEXT PRIMARY KEY,
+      startDate TEXT NOT NULL,
+      endDate TEXT NOT NULL,
+      flow TEXT DEFAULT 'Medium',
+      notes TEXT,
+      symptoms TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS meta (
       key TEXT PRIMARY KEY,
       value TEXT
@@ -217,6 +235,20 @@ export async function getFullPayload() {
 
   const jobApplications = await dbAll('SELECT * FROM job_applications ORDER BY createdAt DESC');
 
+  const periodSettingsRow = await dbGet("SELECT * FROM period_settings WHERE id = 'default'");
+  const periodSettings = periodSettingsRow ? {
+    cycleDuration: Number(periodSettingsRow.cycleDuration) || 28,
+    periodDuration: Number(periodSettingsRow.periodDuration) || 5
+  } : {
+    cycleDuration: 28,
+    periodDuration: 5
+  };
+
+  const periodLogs = (await dbAll('SELECT * FROM period_logs ORDER BY startDate DESC')).map(l => ({
+    ...l,
+    symptoms: l.symptoms ? JSON.parse(l.symptoms) : []
+  }));
+
   const lastUpdatedRow = await dbGet("SELECT value FROM meta WHERE key = 'lastUpdated'");
 
   return {
@@ -239,6 +271,10 @@ export async function getFullPayload() {
       categories: wishlistCategories.length > 0 ? wishlistCategories : ["Tech", "Workstation", "Books", "Lifestyle", "Fashion", "Other"]
     },
     jobs: jobApplications,
+    period: {
+      settings: periodSettings,
+      logs: periodLogs
+    },
     meta: {
       version: '2.1-sqlite',
       database: 'SQLite (WebAssembly)',
@@ -406,6 +442,32 @@ export async function importFullPayload(data) {
       job.appliedDate || now,
       job.createdAt || now,
       job.updatedAt || now
+    ]);
+  }
+
+  // Period Tracker
+  if (data.period?.settings) {
+    const s = data.period.settings;
+    await dbRun(`
+      INSERT OR REPLACE INTO period_settings (id, cycleDuration, periodDuration, updatedAt)
+      VALUES ('default', ?, ?, ?)
+    `, [Number(s.cycleDuration) || 28, Number(s.periodDuration) || 5, now]);
+  }
+
+  for (const log of (data.period?.logs || [])) {
+    await dbRun(`
+      INSERT OR REPLACE INTO period_logs
+      (id, startDate, endDate, flow, notes, symptoms, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      log.id,
+      log.startDate,
+      log.endDate,
+      log.flow || 'Medium',
+      log.notes || '',
+      JSON.stringify(log.symptoms || []),
+      log.createdAt || now,
+      log.updatedAt || now
     ]);
   }
 

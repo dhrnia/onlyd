@@ -8,6 +8,7 @@ import { ContactsApp } from './components/contacts/ContactsApp';
 import { VaultApp } from './components/vault/VaultApp';
 import { WishlistApp } from './components/wishlist/WishlistApp';
 import { JobsApp } from './components/jobs/JobsApp';
+import { PeriodApp } from './components/period/PeriodApp';
 import { DeviceSyncModal } from './components/DeviceSyncModal';
 import { MobileNavBar } from './components/MobileNavBar';
 import { PinLockScreen } from './components/PinLockScreen';
@@ -42,6 +43,7 @@ function AppContent() {
         {currentApp === 'vault' && <VaultApp />}
         {currentApp === 'wishlist' && <WishlistApp />}
         {currentApp === 'jobs' && <JobsApp />}
+        {currentApp === 'period' && <PeriodApp />}
       </main>
 
       {/* Minimal Footer */}
