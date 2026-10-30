@@ -7,6 +7,7 @@ import {
   initDb,
   getFullPayload,
   importFullPayload,
+  isCloudDb,
   dbRun,
   dbGet,
   dbAll
@@ -42,8 +43,9 @@ app.get('/api/status', async (req, res) => {
     res.json({
       status: 'online',
       appName: 'OnlyD Hub',
-      database: 'SQLite (ACID Compliant)',
-      databasePath: 'server/data/onlyd.sqlite',
+      database: isCloudDb ? 'Turso Cloud SQLite (Persistent)' : 'Local SQLite',
+      isPersistentCloud: isCloudDb,
+      databasePath: isCloudDb ? 'Turso Cloud (Remote)' : 'server/data/onlyd.sqlite',
       serverTime: new Date().toISOString(),
       port: PORT,
       lastUpdated: payload.meta?.lastUpdated || null,
@@ -488,7 +490,7 @@ if (fs.existsSync(distPath)) {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n==================================================`);
   console.log(`  🚀 OnlyD Hub Started!`);
-  console.log(`  Database:   SQLite (server/data/onlyd.sqlite)`);
+  console.log(`  Database:   ${isCloudDb ? '⚡ Turso Cloud SQLite (Persistent)' : '📁 Local SQLite (server/data/onlyd.sqlite)'}`);
   console.log(`  Server:     http://localhost:${PORT}`);
   console.log(`==================================================\n`);
 });
