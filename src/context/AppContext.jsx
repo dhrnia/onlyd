@@ -23,6 +23,7 @@ const INITIAL_DATA = {
     items: [],
     categories: ["Tech", "Workstation", "Books", "Lifestyle", "Fashion", "Other"]
   },
+  jobs: [],
   meta: {
     version: "1.0",
     lastUpdated: null
@@ -33,7 +34,7 @@ export function AppProvider({ children }) {
   // Navigation
   const [currentApp, setCurrentApp] = useState(() => {
     const hash = window.location.hash.replace('#/', '').replace('#', '');
-    return ['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist'].includes(hash) ? hash : 'home';
+    return ['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs'].includes(hash) ? hash : 'home';
   });
 
   // Main Data State (cached in localStorage)
@@ -70,7 +71,7 @@ export function AppProvider({ children }) {
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace('#/', '').replace('#', '');
-      if (['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist'].includes(hash)) {
+      if (['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs'].includes(hash)) {
         setCurrentApp(hash);
       } else {
         setCurrentApp('home');
@@ -624,6 +625,40 @@ export function AppProvider({ children }) {
     });
   };
 
+  // 6. JOB APPLICATION TRACKER
+  const addJobApplication = (job) => {
+    const newJob = {
+      ...job,
+      id: `job-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      appliedDate: job.appliedDate || new Date().toISOString().slice(0, 10),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSync(prev => ({
+      ...prev,
+      jobs: [newJob, ...(prev.jobs || [])]
+    }));
+    showToast('Job application recorded');
+  };
+
+  const updateJobApplication = (id, updates) => {
+    updateAndSync(prev => ({
+      ...prev,
+      jobs: (prev.jobs || []).map(j =>
+        j.id === id ? { ...j, ...updates, updatedAt: new Date().toISOString() } : j
+      )
+    }));
+    showToast('Application updated');
+  };
+
+  const deleteJobApplication = (id) => {
+    updateAndSync(prev => ({
+      ...prev,
+      jobs: (prev.jobs || []).filter(j => j.id !== id)
+    }));
+    showToast('Application removed');
+  };
+
   // Full Import JSON
   const importDatabase = async (jsonObj) => {
     try {
@@ -695,6 +730,11 @@ export function AppProvider({ children }) {
         deleteWishlistItem,
         toggleWishlistPurchased,
         addWishlistCategory,
+
+        // Jobs
+        addJobApplication,
+        updateJobApplication,
+        deleteJobApplication,
 
         // Import
         importDatabase

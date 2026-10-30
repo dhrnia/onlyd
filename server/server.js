@@ -54,7 +54,8 @@ app.get('/api/status', async (req, res) => {
         contacts: payload.contacts?.length || 0,
         vaultPasswords: payload.vault?.passwords?.length || 0,
         vaultLinks: payload.vault?.links?.length || 0,
-        wishlist: payload.wishlist?.items?.length || 0
+        wishlist: payload.wishlist?.items?.length || 0,
+        jobs: payload.jobs?.length || 0
       }
     });
   } catch (err) {
@@ -355,6 +356,62 @@ app.post('/api/wishlist/items', async (req, res) => {
 app.delete('/api/wishlist/items/:id', async (req, res) => {
   await dbRun('DELETE FROM wishlist_items WHERE id = ?', [req.params.id]);
   res.json({ success: true });
+});
+
+// 6. JOB APPLICATION TRACKER
+app.get('/api/jobs', async (req, res) => {
+  const payload = await getFullPayload();
+  res.json(payload.jobs || []);
+});
+
+app.post('/api/jobs', async (req, res) => {
+  const job = req.body;
+  const id = job.id || `job-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const now = new Date().toISOString();
+  await dbRun(`
+    INSERT INTO job_applications 
+    (id, company, role, source, roundsReached, status, notes, appliedDate, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [
+    id,
+    job.company,
+    job.role,
+    job.source || '',
+    job.roundsReached || 'Applied',
+    job.status || 'Applied',
+    job.notes || '',
+    job.appliedDate || now.slice(0, 10),
+    now,
+    now
+  ]);
+  res.json({ ...job, id, createdAt: now, updatedAt: now });
+});
+
+app.put('/api/jobs/:id', async (req, res) => {
+  const id = req.params.id;
+  const job = req.body;
+  const now = new Date().toISOString();
+  await dbRun(`
+    UPDATE job_applications SET
+      company = ?, role = ?, source = ?, roundsReached = ?, status = ?, notes = ?, appliedDate = ?, updatedAt = ?
+    WHERE id = ?
+  `, [
+    job.company,
+    job.role,
+    job.source || '',
+    job.roundsReached || 'Applied',
+    job.status || 'Applied',
+    job.notes || '',
+    job.appliedDate || now.slice(0, 10),
+    now,
+    id
+  ]);
+  res.json({ ...job, id, updatedAt: now });
+});
+
+app.delete('/api/jobs/:id', async (req, res) => {
+  await dbRun('DELETE FROM job_applications WHERE id = ?', [req.params.id]);
+  res.json({ success: true, id: req.params.id });
 });
 
 // Client SPA fallback

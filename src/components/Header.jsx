@@ -5,6 +5,7 @@ import {
   Users,
   KeyRound,
   Gift,
+  Briefcase,
   Home,
   RefreshCw,
   Database,
@@ -21,6 +22,7 @@ export const APPS = [
   { id: 'contacts', name: 'Contacts', icon: Users, desc: 'Address book & tags' },
   { id: 'vault', name: 'Vault', icon: KeyRound, desc: 'Passwords & links' },
   { id: 'wishlist', name: 'Wishlist', icon: Gift, desc: 'Priorities & pricing' },
+  { id: 'jobs', name: 'Jobs', icon: Briefcase, desc: 'Application tracker' },
 ];
 
 export function Header() {
