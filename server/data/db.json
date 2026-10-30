@@ -1,0 +1,24 @@
+{
+  "shelf": {
+    "items": [],
+    "genres": [],
+    "collections": []
+  },
+  "budget": {
+    "goals": [],
+    "expenses": []
+  },
+  "contacts": [],
+  "vault": {
+    "passwords": [],
+    "links": []
+  },
+  "wishlist": {
+    "items": [],
+    "categories": []
+  },
+  "meta": {
+    "version": "2.0-sqlite",
+    "lastUpdated": "2026-10-30T11:06:00.000Z"
+  }
+}

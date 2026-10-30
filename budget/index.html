@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Budget - Rupee Savings & Spending Tracker</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            mono: {
+              black: '#000000',
+              card: '#0a0a0c',
+              border: '#27272a',
+              text: '#ffffff',
+              muted: '#a1a1aa'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Custom CSS -->
+  <link rel="stylesheet" href="css/styles.css">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+</head>
+<body class="min-h-screen bg-black text-white antialiased flex selection:bg-white selection:text-black">
+
+  <!-- ================= MOBILE SIDEBAR BACKDROP ================= -->
+  <div id="sidebar-backdrop" class="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm hidden lg:hidden"></div>
+
+  <!-- ================= SIDEBAR NAVIGATION ================= -->
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 bg-zinc-950 border-r border-zinc-800 flex flex-col transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out">
+    
+    <!-- Sidebar Header / Brand -->
+    <div class="h-20 px-6 flex items-center justify-between border-b border-zinc-800">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-white text-black flex items-center justify-center font-extrabold text-xl shadow-md shadow-white/10">
+          ₹
+        </div>
+        <h1 class="text-xl font-black tracking-tight text-white font-heading">Budget</h1>
+      </div>
+      
+      <!-- Close button on mobile -->
+      <button id="sidebar-close-btn" class="lg:hidden p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Modules -->
+    <div class="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+      
+      <!-- Module 1: Savings Target & Sub-Modules -->
+      <div class="space-y-1.5">
+        <!-- Savings Target Parent Accordion Header -->
+        <div class="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl text-sm font-bold text-white hover:bg-zinc-900 transition-colors cursor-pointer group" id="sidebar-savings-header">
+          <div class="flex items-center gap-3">
+            <i data-lucide="target" class="w-4 h-4 text-white"></i>
+            <span>Savings Target</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="sidebar-targets-count" class="text-xs px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-300 font-semibold">0</span>
+            <button onclick="event.stopPropagation(); toggleSavingsAccordion();" title="Expand/Collapse" class="text-zinc-500 group-hover:text-white transition-colors p-0.5">
+              <i data-lucide="chevron-right" id="sidebar-savings-chevron" class="w-4 h-4 transition-transform duration-200"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Sub-Modules: Every time there is a new target it is added here as a sub-module -->
+        <div id="sidebar-targets-list" class="space-y-1 pt-1">
+          <!-- Dynamically populated target sub-modules -->
+        </div>
+      </div>
+
+      <!-- Module 2: Spendings -->
+      <div class="space-y-1.5 pt-2 border-t border-zinc-900">
+        <button id="sidebar-nav-spendings" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all text-zinc-400 hover:text-white hover:bg-zinc-900">
+          <div class="flex items-center gap-3">
+            <i data-lucide="receipt" class="w-4 h-4"></i>
+            <span>Spendings</span>
+          </div>
+          <span class="text-[10px] uppercase font-bold tracking-wider text-zinc-500">Expenses</span>
+        </button>
+      </div>
+
+
+
+    </div>
+
+    <!-- Sidebar Footer / Data Management -->
+    <div class="p-4 border-t border-zinc-800">
+      <button id="btn-open-data-mgr" class="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 text-xs font-semibold transition-all">
+        <i data-lucide="database" class="w-4 h-4"></i>
+        <span>Backup & Data Settings</span>
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- ================= MAIN CONTENT WRAPPER ================= -->
+  <div class="flex-1 lg:pl-72 flex flex-col min-h-screen min-w-0">
+    
+    <!-- Top Bar Header (Mobile Hamburger & Quick Status) -->
+    <header class="sticky top-0 z-30 bg-black/90 backdrop-blur-md border-b border-zinc-800 h-20 flex items-center justify-between px-4 sm:px-6 lg:px-8">
+      
+      <!-- Mobile hamburger + Logo -->
+      <div class="flex items-center gap-3">
+        <button id="mobile-menu-btn" class="lg:hidden p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+
+        <div class="lg:hidden flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-white text-black flex items-center justify-center font-extrabold text-sm">
+            ₹
+          </div>
+          <span class="font-extrabold text-white text-base font-heading">Budget</span>
+        </div>
+      </div>
+
+
+
+      <!-- Quick Add Target Button (Always visible on header) -->
+      <div class="flex items-center gap-2">
+        <button onclick="openCreateGoalModal()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-zinc-200 transition-all shadow-md shadow-white/10">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+          <span>New Target</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
+
+      <!-- ======================================================== -->
+      <!-- VIEW 1: SAVINGS TARGET (MODULE 1)                        -->
+      <!-- ======================================================== -->
+      <section id="view-savings" class="space-y-6">
+        
+        <!-- Empty State (if all goals deleted) -->
+        <div id="goal-empty-state" class="hidden text-center py-16 px-4 glass-card rounded-3xl border border-zinc-800">
+          <div class="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-700 text-white flex items-center justify-center mx-auto mb-4">
+            <i data-lucide="target" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2 font-heading">No Savings Goals Found</h3>
+          <p class="text-zinc-400 max-w-md mx-auto mb-6 text-sm">Create your first goal. It will appear as a sub-module under "Savings Target" in the sidebar.</p>
+          <button onclick="openCreateGoalModal()" class="px-5 py-2.5 rounded-xl bg-white text-black hover:bg-zinc-200 font-bold text-sm transition-all shadow-lg shadow-white/10">
+            Create My First Target
+          </button>
+        </div>
+
+        <!-- Active Goal Card -->
+        <div id="active-goal-card" class="glass-card rounded-3xl p-6 sm:p-8 border border-zinc-800 relative overflow-hidden">
+          
+          <!-- Header Info -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-3">
+                <h2 id="goal-name-text" class="text-2xl sm:text-3xl font-extrabold text-white font-heading tracking-tight">Emergency Fund</h2>
+                <div id="goal-status-badge"></div>
+              </div>
+              <div id="goal-date-info" class="flex items-center gap-2 text-xs text-zinc-400">
+                <!-- Deadline / Date info -->
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button id="btn-edit-active-goal" title="Edit goal settings" class="p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700 transition-all text-xs font-medium flex items-center gap-1.5">
+                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Edit Goal</span>
+              </button>
+              <button id="btn-delete-active-goal" title="Delete this goal" class="p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700 transition-all text-xs">
+                <i data-lucide="trash" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Metrics Grid (Black & White Stark Contrast) -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <div class="p-5 rounded-2xl bg-zinc-950 border border-zinc-800">
+              <span class="text-xs uppercase font-bold tracking-wider text-zinc-400">Amount Saved So Far</span>
+              <div id="goal-saved-text" class="text-3xl sm:text-4xl font-black text-white mt-1 font-heading">₹0</div>
+              <span class="text-xs text-zinc-500 mt-1 block">Deposits in Indian Rupees</span>
+            </div>
+            <div class="p-5 rounded-2xl bg-zinc-950 border border-zinc-800">
+              <span class="text-xs uppercase font-bold tracking-wider text-zinc-400">Target Goal</span>
+              <div id="goal-target-text" class="text-3xl sm:text-4xl font-black text-zinc-200 mt-1 font-heading">₹0</div>
+              <span class="text-xs text-zinc-500 mt-1 block">Total Objective</span>
+            </div>
+            <div class="p-5 rounded-2xl bg-zinc-950 border border-zinc-800">
+              <span class="text-xs uppercase font-bold tracking-wider text-zinc-400">Remaining to Target</span>
+              <div id="goal-remaining-text" class="text-3xl sm:text-4xl font-black text-zinc-300 mt-1 font-heading">₹0</div>
+              <span class="text-xs text-zinc-500 mt-1 block">Needed to hit 100%</span>
+            </div>
+          </div>
+
+          <!-- Visual Progress Bar Section (Monochrome) -->
+          <div class="space-y-2.5 mb-8">
+            <div class="flex items-center justify-between text-sm">
+              <span class="font-medium text-zinc-300 flex items-center gap-1.5">
+                <i data-lucide="activity" class="w-4 h-4 text-white"></i>
+                Target Progress
+              </span>
+              <span id="goal-progress-percent" class="font-extrabold text-white font-mono text-base">0%</span>
+            </div>
+
+            <!-- Progress Bar Track -->
+            <div class="relative w-full h-5 bg-zinc-950 rounded-full overflow-hidden p-1 border border-zinc-800 shadow-inner">
+              <div id="goal-progress-bar" class="progress-fill h-full bg-white rounded-full w-0 shadow-lg"></div>
+            </div>
+
+            <!-- Milestone Marks -->
+            <div class="flex justify-between text-[11px] font-semibold text-zinc-500 px-1">
+              <span>0%</span>
+              <span>25%</span>
+              <span>50%</span>
+              <span>75%</span>
+              <span class="text-white font-bold">100% Target</span>
+            </div>
+          </div>
+
+          <!-- Primary Money Actions: Add & Remove -->
+          <div class="flex flex-col sm:flex-row items-stretch gap-4 pb-6 border-b border-zinc-800">
+            <button id="btn-open-add-money" class="flex-1 flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl bg-white hover:bg-zinc-200 text-black font-bold text-base shadow-lg shadow-white/10 transition-all hover:scale-[1.01] active:scale-[0.99]">
+              <i data-lucide="plus-circle" class="w-5 h-5 text-black"></i>
+              <span>Add Money to Target (₹)</span>
+            </button>
+            
+            <button id="btn-open-remove-money" class="flex-1 flex items-center justify-center gap-2.5 px-6 py-4 rounded-2xl bg-zinc-950 hover:bg-zinc-900 text-white border border-zinc-700 hover:border-white font-bold text-base transition-all hover:scale-[1.01] active:scale-[0.99]">
+              <i data-lucide="minus-circle" class="w-5 h-5 text-zinc-300"></i>
+              <span>Remove / Withdraw Money (₹)</span>
+            </button>
+          </div>
+
+          <!-- Quick Deposit Pills -->
+          <div class="pt-6">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs text-zinc-400 font-medium mr-1">Quick Add:</span>
+              <button onclick="quickAddSavings(100)" class="quick-pill px-3.5 py-1.5 rounded-xl bg-zinc-900 text-zinc-200 border border-zinc-800 text-xs font-semibold">
+                +₹100
+              </button>
+              <button onclick="quickAddSavings(200)" class="quick-pill px-3.5 py-1.5 rounded-xl bg-zinc-900 text-zinc-200 border border-zinc-800 text-xs font-semibold">
+                +₹200
+              </button>
+              <button onclick="quickAddSavings(300)" class="quick-pill px-3.5 py-1.5 rounded-xl bg-zinc-900 text-zinc-200 border border-zinc-800 text-xs font-semibold">
+                +₹300
+              </button>
+              <button onclick="quickAddSavings(400)" class="quick-pill px-3.5 py-1.5 rounded-xl bg-zinc-900 text-zinc-200 border border-zinc-800 text-xs font-semibold">
+                +₹400
+              </button>
+              <button onclick="quickAddSavings(500)" class="quick-pill px-3.5 py-1.5 rounded-xl bg-zinc-900 text-zinc-200 border border-zinc-800 text-xs font-semibold">
+                +₹500
+              </button>
+              <button onclick="quickAddSavings(600)" class="quick-pill px-3.5 py-1.5 rounded-xl bg-zinc-900 text-zinc-200 border border-zinc-800 text-xs font-semibold">
+                +₹600
+              </button>
+              <button onclick="quickAddSavings(700)" class="quick-pill px-3.5 py-1.5 rounded-xl bg-zinc-900 text-zinc-200 border border-zinc-800 text-xs font-semibold">
+                +₹700
+              </button>
+              <button onclick="quickAddSavings(800)" class="quick-pill px-3.5 py-1.5 rounded-xl bg-zinc-900 text-zinc-200 border border-zinc-800 text-xs font-semibold">
+                +₹800
+              </button>
+              <button onclick="quickAddSavings(900)" class="quick-pill px-3.5 py-1.5 rounded-xl bg-zinc-900 text-zinc-200 border border-zinc-800 text-xs font-semibold">
+                +₹900
+              </button>
+              <button onclick="quickAddSavings(1000)" class="quick-pill px-3.5 py-1.5 rounded-xl bg-zinc-900 text-zinc-200 border border-zinc-800 text-xs font-semibold">
+                +₹1,000
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Savings History Log -->
+        <div class="glass-card rounded-3xl p-6 sm:p-8 border border-zinc-800">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <h3 class="text-lg font-bold text-white font-heading">Savings Deposits & Withdrawals History</h3>
+              <span id="savings-history-count" class="text-xs text-zinc-400">(0)</span>
+            </div>
+            <span class="text-xs text-zinc-500">Chronological activity</span>
+          </div>
+
+          <div id="savings-history-list" class="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+            <!-- Dynamic savings history items -->
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 2: SPENDINGS (MODULE 2)                             -->
+      <!-- ======================================================== -->
+      <section id="view-spendings" class="hidden space-y-6">
+        
+        <!-- Top Summary Cards (Monochrome) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <div class="glass-card rounded-2xl p-5 border border-zinc-800">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">Spent This Month</span>
+              <div class="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center">
+                <i data-lucide="calendar" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div id="expense-stat-month" class="text-2xl sm:text-3xl font-extrabold text-white mt-2 font-heading">₹0</div>
+            <p class="text-xs text-zinc-500 mt-1">Current calendar month</p>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5 border border-zinc-800">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">Spent Today</span>
+              <div class="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center">
+                <i data-lucide="clock" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div id="expense-stat-today" class="text-2xl sm:text-3xl font-extrabold text-white mt-2 font-heading">₹0</div>
+            <p class="text-xs text-zinc-500 mt-1">Today's transactions</p>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5 border border-zinc-800">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">Top Category</span>
+              <div class="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 text-white flex items-center justify-center">
+                <i data-lucide="tag" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div id="expense-stat-top-cat" class="text-xl sm:text-2xl font-bold text-zinc-200 mt-2 truncate font-heading">None</div>
+            <p class="text-xs text-zinc-500 mt-1">Highest spend area</p>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5 border border-zinc-800">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">Total Entries</span>
+              <div class="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center">
+                <i data-lucide="list" class="w-4 h-4"></i>
+              </div>
+            </div>
+            <div id="expense-stat-count" class="text-2xl sm:text-3xl font-extrabold text-zinc-200 mt-2 font-heading">0</div>
+            <p class="text-xs text-zinc-500 mt-1">Recorded spendings</p>
+          </div>
+
+        </div>
+
+        <!-- Controls & Table Section -->
+        <div class="glass-card rounded-3xl p-6 sm:p-8 border border-zinc-800 space-y-6">
+          
+          <!-- Header & Add Button -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 class="text-xl font-bold text-white font-heading">Spendings Log</h3>
+              <p class="text-xs text-zinc-400">Track and manage every expense in Indian Rupees</p>
+            </div>
+
+            <button id="btn-open-add-expense" class="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-black font-bold text-sm shadow-lg shadow-white/10 transition-all hover:scale-[1.02] active:scale-[0.98]">
+              <i data-lucide="plus" class="w-4 h-4 text-black"></i>
+              <span>+ Add New Spending</span>
+            </button>
+          </div>
+
+          <!-- Filters & Search Toolbar -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <!-- Search box -->
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 text-zinc-500 absolute left-3.5 top-3.5"></i>
+              <input id="expense-search-input" type="text" placeholder="Search note, category, UPI..." class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-white">
+            </div>
+
+            <!-- Category Filter -->
+            <div>
+              <select id="expense-category-filter" class="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 focus:outline-none focus:border-white">
+                <!-- Dynamically populated -->
+              </select>
+            </div>
+
+            <!-- Sort Filter -->
+            <div>
+              <select id="expense-sort-filter" class="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 focus:outline-none focus:border-white">
+                <option value="newest">Sort: Date (Newest first)</option>
+                <option value="oldest">Sort: Date (Oldest first)</option>
+                <option value="highest">Sort: Amount (Highest first)</option>
+                <option value="lowest">Sort: Amount (Lowest first)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Spendings Table (Monochrome) -->
+          <div class="overflow-x-auto rounded-2xl border border-zinc-800">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-zinc-950 border-b border-zinc-800 text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                  <th class="py-3.5 px-4">Date</th>
+                  <th class="py-3.5 px-4">Category</th>
+                  <th class="py-3.5 px-4">Description / Note</th>
+                  <th class="py-3.5 px-4">Payment Method</th>
+                  <th class="py-3.5 px-4 text-right">Amount (₹)</th>
+                  <th class="py-3.5 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="expenses-table-body" class="divide-y divide-zinc-800/80 bg-zinc-950/40">
+                <!-- Expense rows dynamically populated -->
+              </tbody>
+            </table>
+
+            <div id="expenses-empty-state" class="hidden text-center py-12 px-4">
+              <i data-lucide="receipt" class="w-10 h-10 mx-auto text-zinc-600 mb-2"></i>
+              <p class="text-sm text-zinc-400">No spendings found matching the criteria.</p>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-zinc-800/80 py-6 text-center text-xs text-zinc-500">
+      <p>Budget • Target Savings & Spendings in Indian Rupees (₹) • Stored locally in your browser</p>
+    </footer>
+
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: ADD MONEY TO TARGET                               -->
+  <!-- ======================================================== -->
+  <div id="modal-add-money" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="bg-zinc-950 border border-zinc-800 w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-white text-black flex items-center justify-center font-bold">
+            <i data-lucide="arrow-down-left" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white font-heading">Add Money to Target</h3>
+            <p id="add-money-goal-name" class="text-xs text-zinc-300 font-medium">Target Name</p>
+          </div>
+        </div>
+        <button data-close-modal="modal-add-money" class="text-zinc-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-add-money" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Amount in Rupees (₹) *</label>
+          <div class="relative">
+            <span class="absolute left-4 top-3 text-lg font-bold text-zinc-400">₹</span>
+            <input id="add-money-amount" type="number" step="any" min="1" required placeholder="e.g. 5000" class="w-full pl-9 pr-4 py-3 rounded-xl bg-black border border-zinc-700 text-lg font-semibold text-white focus:outline-none focus:border-white">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Note / Source (Optional)</label>
+          <input id="add-money-note" type="text" placeholder="e.g. Monthly salary, Birthday gift, Bonus" class="w-full px-4 py-2.5 rounded-xl bg-black border border-zinc-700 text-sm text-zinc-200 focus:outline-none focus:border-white">
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" data-close-modal="modal-add-money" class="flex-1 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-sm font-medium border border-zinc-800">Cancel</button>
+          <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-black text-sm font-bold shadow-lg shadow-white/10">Confirm Deposit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: REMOVE MONEY FROM TARGET                          -->
+  <!-- ======================================================== -->
+  <div id="modal-remove-money" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="bg-zinc-950 border border-zinc-800 w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-700 text-white flex items-center justify-center">
+            <i data-lucide="arrow-up-right" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white font-heading">Withdraw / Remove Money</h3>
+            <p id="remove-money-goal-name" class="text-xs text-zinc-400 font-medium">Target Name</p>
+          </div>
+        </div>
+        <button data-close-modal="modal-remove-money" class="text-zinc-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-3 rounded-xl bg-black border border-zinc-800 text-xs text-zinc-400 flex items-center justify-between">
+        <span>Available in this target:</span>
+        <strong id="remove-money-saved-avail" class="text-white text-sm font-bold">₹0</strong>
+      </div>
+
+      <form id="form-remove-money" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Amount to Withdraw (₹) *</label>
+          <div class="relative">
+            <span class="absolute left-4 top-3 text-lg font-bold text-zinc-400">₹</span>
+            <input id="remove-money-amount" type="number" step="any" min="1" required placeholder="e.g. 2000" class="w-full pl-9 pr-4 py-3 rounded-xl bg-black border border-zinc-700 text-lg font-semibold text-white focus:outline-none focus:border-white">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Reason / Note (Optional)</label>
+          <input id="remove-money-note" type="text" placeholder="e.g. Emergency expense, reallocation" class="w-full px-4 py-2.5 rounded-xl bg-black border border-zinc-700 text-sm text-zinc-200 focus:outline-none focus:border-white">
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" data-close-modal="modal-remove-money" class="flex-1 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-sm font-medium border border-zinc-800">Cancel</button>
+          <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-black text-sm font-bold shadow-lg shadow-white/10">Confirm Withdrawal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: CREATE / EDIT SAVINGS TARGET                      -->
+  <!-- ======================================================== -->
+  <div id="modal-goal-form" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="bg-zinc-950 border border-zinc-800 w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center justify-between">
+        <h3 id="modal-goal-title" class="text-lg font-bold text-white font-heading">Create New Savings Target</h3>
+        <button data-close-modal="modal-goal-form" class="text-zinc-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-goal" class="space-y-4">
+        <input type="hidden" id="goal-form-id">
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Target Name *</label>
+          <input id="goal-form-name" type="text" required placeholder="e.g. New Workstation, Emergency Fund, Vacation" class="w-full px-4 py-2.5 rounded-xl bg-black border border-zinc-700 text-sm text-white focus:outline-none focus:border-white">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Target Amount in Rupees (₹) *</label>
+          <div class="relative">
+            <span class="absolute left-4 top-2.5 text-base font-bold text-zinc-400">₹</span>
+            <input id="goal-form-target" type="number" min="1" step="any" required placeholder="e.g. 50000" class="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black border border-zinc-700 text-sm font-semibold text-white focus:outline-none focus:border-white">
+          </div>
+        </div>
+
+        <div id="goal-form-initial-group">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Starting Saved Amount (₹)</label>
+          <div class="relative">
+            <span class="absolute left-4 top-2.5 text-base font-bold text-zinc-400">₹</span>
+            <input id="goal-form-initial" type="number" min="0" step="any" value="0" placeholder="0" class="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black border border-zinc-700 text-sm font-semibold text-white focus:outline-none focus:border-white">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Target Date (Optional)</label>
+          <input id="goal-form-date" type="date" class="w-full px-4 py-2.5 rounded-xl bg-black border border-zinc-700 text-sm text-white focus:outline-none focus:border-white">
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" data-close-modal="modal-goal-form" class="flex-1 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-sm font-medium border border-zinc-800">Cancel</button>
+          <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-black text-sm font-bold shadow-lg shadow-white/10">Save Target</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: ADD SPENDING                                      -->
+  <!-- ======================================================== -->
+  <div id="modal-add-expense" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="bg-zinc-950 border border-zinc-800 w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-white text-black flex items-center justify-center">
+            <i data-lucide="receipt" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white font-heading">Record New Spending</h3>
+            <p class="text-xs text-zinc-400">Track where your money went</p>
+          </div>
+        </div>
+        <button data-close-modal="modal-add-expense" class="text-zinc-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="form-add-expense" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Amount in Rupees (₹) *</label>
+          <div class="relative">
+            <span class="absolute left-4 top-2.5 text-lg font-bold text-zinc-400">₹</span>
+            <input id="expense-amount" type="number" step="any" min="1" required placeholder="e.g. 750" class="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black border border-zinc-700 text-lg font-semibold text-white focus:outline-none focus:border-white">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Category *</label>
+          <select id="expense-category" class="w-full px-4 py-2.5 rounded-xl bg-black border border-zinc-700 text-sm text-zinc-200 focus:outline-none focus:border-white">
+            <!-- Categories injected dynamically -->
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Description / Note</label>
+          <input id="expense-note" type="text" placeholder="e.g. Lunch with team, fuel, groceries" class="w-full px-4 py-2.5 rounded-xl bg-black border border-zinc-700 text-sm text-zinc-200 focus:outline-none focus:border-white">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Payment Mode</label>
+            <select id="expense-payment" class="w-full px-3 py-2.5 rounded-xl bg-black border border-zinc-700 text-sm text-zinc-200 focus:outline-none focus:border-white">
+              <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
+              <option value="Cash">Cash</option>
+              <option value="Credit Card">Credit Card</option>
+              <option value="Debit Card">Debit Card</option>
+              <option value="Net Banking">Net Banking</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">Date</label>
+            <input id="expense-date" type="date" required class="w-full px-3 py-2.5 rounded-xl bg-black border border-zinc-700 text-sm text-zinc-200 focus:outline-none focus:border-white">
+          </div>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" data-close-modal="modal-add-expense" class="flex-1 px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-sm font-medium border border-zinc-800">Cancel</button>
+          <button type="submit" class="flex-1 px-4 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-black text-sm font-bold shadow-lg shadow-white/10">Save Spending</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: DATA MANAGEMENT & BACKUP                          -->
+  <!-- ======================================================== -->
+  <div id="modal-data-management" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="bg-zinc-950 border border-zinc-800 w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-white text-black flex items-center justify-center">
+            <i data-lucide="database" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white font-heading">Data & Backup</h3>
+            <p class="text-xs text-zinc-400">Your data is saved safely in this browser</p>
+          </div>
+        </div>
+        <button data-close-modal="modal-data-management" class="text-zinc-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 pt-2">
+        <button id="btn-export-data" class="w-full flex items-center justify-between p-3.5 rounded-xl bg-black hover:bg-zinc-900 border border-zinc-800 text-left transition-all">
+          <div class="flex items-center gap-3">
+            <i data-lucide="download" class="w-5 h-5 text-white"></i>
+            <div>
+              <div class="text-sm font-semibold text-white">Export Backup (JSON)</div>
+              <div class="text-xs text-zinc-400">Download your targets, deposits, and spendings</div>
+            </div>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-zinc-500"></i>
+        </button>
+
+        <label class="w-full flex items-center justify-between p-3.5 rounded-xl bg-black hover:bg-zinc-900 border border-zinc-800 text-left transition-all cursor-pointer">
+          <div class="flex items-center gap-3">
+            <i data-lucide="upload" class="w-5 h-5 text-white"></i>
+            <div>
+              <div class="text-sm font-semibold text-white">Import Backup (JSON)</div>
+              <div class="text-xs text-zinc-400">Restore your previously exported records</div>
+            </div>
+          </div>
+          <input type="file" id="import-file-input" accept=".json" class="hidden">
+          <i data-lucide="chevron-right" class="w-4 h-4 text-zinc-500"></i>
+        </label>
+
+
+      </div>
+
+      <div class="pt-2">
+        <button type="button" data-close-modal="modal-data-management" class="w-full px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-sm font-medium border border-zinc-800">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom App Script -->
+  <script src="js/app.js"></script>
+</body>
+</html>
