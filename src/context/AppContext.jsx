@@ -31,6 +31,7 @@ const INITIAL_DATA = {
     },
     logs: []
   },
+  chores: [],
   meta: {
     version: "1.0",
     lastUpdated: null
@@ -48,7 +49,8 @@ function hasContent(d) {
     (d.vault?.links?.length || 0) > 0 ||
     (d.wishlist?.items?.length || 0) > 0 ||
     (d.jobs?.length || 0) > 0 ||
-    (d.period?.logs?.length || 0) > 0
+    (d.period?.logs?.length || 0) > 0 ||
+    (d.chores?.length || 0) > 0
   );
 }
 
@@ -56,7 +58,7 @@ export function AppProvider({ children }) {
   // Navigation
   const [currentApp, setCurrentApp] = useState(() => {
     const hash = window.location.hash.replace('#/', '').replace('#', '');
-    return ['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs', 'period'].includes(hash) ? hash : 'home';
+    return ['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs', 'period', 'chores'].includes(hash) ? hash : 'home';
   });
 
   // Main Data State (cached in localStorage)
@@ -93,7 +95,7 @@ export function AppProvider({ children }) {
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace('#/', '').replace('#', '');
-      if (['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs', 'period'].includes(hash)) {
+      if (['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs', 'period', 'chores'].includes(hash)) {
         setCurrentApp(hash);
       } else {
         setCurrentApp('home');
@@ -775,6 +777,60 @@ export function AppProvider({ children }) {
     showToast('Period log deleted');
   };
 
+  // Chores App Methods
+  const addChore = (chore) => {
+    const newChore = {
+      ...chore,
+      id: chore.id || `chore-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSync(prev => ({
+      ...prev,
+      chores: [...(prev.chores || []), newChore]
+    }));
+    showToast('Chore created');
+  };
+
+  const updateChore = (id, updates) => {
+    updateAndSync(prev => ({
+      ...prev,
+      chores: (prev.chores || []).map(c =>
+        c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c
+      )
+    }));
+    showToast('Chore updated');
+  };
+
+  const deleteChore = (id) => {
+    updateAndSync(prev => ({
+      ...prev,
+      chores: (prev.chores || []).filter(c => c.id !== id)
+    }));
+    showToast('Chore deleted');
+  };
+
+  const completeChore = (id) => {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    updateAndSync(prev => ({
+      ...prev,
+      chores: (prev.chores || []).map(c => {
+        if (c.id !== id) return c;
+        const [y, m, d] = todayStr.split('-').map(Number);
+        const nextDateObj = new Date(Date.UTC(y, m - 1, d + Number(c.frequencyDays || 7)));
+        const nextDueDate = nextDateObj.toISOString().slice(0, 10);
+        return {
+          ...c,
+          lastDoneDate: todayStr,
+          nextDueDate,
+          updatedAt: new Date().toISOString()
+        };
+      })
+    }));
+    showToast('Marked as done!');
+  };
+
   // Full Import JSON
   const importDatabase = async (jsonObj) => {
     try {
@@ -857,6 +913,12 @@ export function AppProvider({ children }) {
         addPeriodLog,
         updatePeriodLog,
         deletePeriodLog,
+
+        // Chores
+        addChore,
+        updateChore,
+        deleteChore,
+        completeChore,
 
         // Import
         importDatabase

@@ -7,6 +7,7 @@ import {
   Gift,
   Briefcase,
   CalendarHeart,
+  CheckSquare,
   Home,
   RefreshCw,
   Database,
@@ -25,6 +26,7 @@ export const APPS = [
   { id: 'wishlist', name: 'Wishlist', icon: Gift, desc: 'Priorities & pricing' },
   { id: 'jobs', name: 'Jobs', icon: Briefcase, desc: 'Application tracker' },
   { id: 'period', name: 'Period', icon: CalendarHeart, desc: 'Cycle & phase tracker' },
+  { id: 'chores', name: 'Chores', icon: CheckSquare, desc: 'Recurring task schedule' },
 ];
 
 export function Header() {

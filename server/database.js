@@ -173,6 +173,17 @@ const SCHEMA_TABLES = [
     createdAt TEXT,
     updatedAt TEXT
   )`,
+  `CREATE TABLE IF NOT EXISTS chores (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    lastDoneDate TEXT NOT NULL,
+    frequencyDays INTEGER NOT NULL DEFAULT 7,
+    nextDueDate TEXT NOT NULL,
+    category TEXT DEFAULT 'General',
+    notes TEXT,
+    createdAt TEXT,
+    updatedAt TEXT
+  )`,
   `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`
 ];
 
@@ -267,6 +278,8 @@ export async function getFullPayload() {
     symptoms: l.symptoms ? JSON.parse(l.symptoms) : []
   }));
 
+  const chores = await dbAll('SELECT * FROM chores ORDER BY nextDueDate ASC');
+
   const lastUpdatedRow = await dbGet("SELECT value FROM meta WHERE key = 'lastUpdated'");
 
   return {
@@ -293,6 +306,7 @@ export async function getFullPayload() {
       settings: periodSettings,
       logs: periodLogs
     },
+    chores,
     meta: {
       version: '3.0-persistent',
       database: isCloudDb ? 'Turso Cloud SQLite' : 'Local SQLite',
@@ -440,6 +454,17 @@ export async function importFullPayload(data) {
       }
     }
 
+    // 8. Chores
+    if (Array.isArray(data.chores)) {
+      batch.push({ sql: 'DELETE FROM chores', args: [] });
+      for (const chore of data.chores) {
+        batch.push({
+          sql: `INSERT INTO chores (id, name, lastDoneDate, frequencyDays, nextDueDate, category, notes, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [chore.id, chore.name, chore.lastDoneDate, Number(chore.frequencyDays) || 7, chore.nextDueDate, chore.category || 'General', chore.notes || '', chore.createdAt || now, chore.updatedAt || now]
+        });
+      }
+    }
+
     batch.push({
       sql: `INSERT OR REPLACE INTO meta (key, value) VALUES ('lastUpdated', ?)`,
       args: [now]
@@ -558,6 +583,16 @@ export async function importFullPayload(data) {
         sqlJsInstance.run(`
           INSERT INTO period_logs (id, startDate, endDate, flow, notes, symptoms, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `, [log.id, log.startDate, log.endDate, log.flow || 'Medium', log.notes || '', JSON.stringify(log.symptoms || []), log.createdAt || now, log.updatedAt || now]);
+      }
+    }
+
+    // 8. Chores
+    if (Array.isArray(data.chores)) {
+      sqlJsInstance.run('DELETE FROM chores');
+      for (const chore of data.chores) {
+        sqlJsInstance.run(`
+          INSERT INTO chores (id, name, lastDoneDate, frequencyDays, nextDueDate, category, notes, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [chore.id, chore.name, chore.lastDoneDate, Number(chore.frequencyDays) || 7, chore.nextDueDate, chore.category || 'General', chore.notes || '', chore.createdAt || now, chore.updatedAt || now]);
       }
     }
 

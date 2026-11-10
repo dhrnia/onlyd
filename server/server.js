@@ -58,7 +58,8 @@ app.get('/api/status', async (req, res) => {
         vaultLinks: payload.vault?.links?.length || 0,
         wishlist: payload.wishlist?.items?.length || 0,
         jobs: payload.jobs?.length || 0,
-        periodLogs: payload.period?.logs?.length || 0
+        periodLogs: payload.period?.logs?.length || 0,
+        chores: payload.chores?.length || 0
       }
     });
   } catch (err) {
@@ -476,6 +477,60 @@ app.put('/api/period/logs/:id', async (req, res) => {
 
 app.delete('/api/period/logs/:id', async (req, res) => {
   await dbRun('DELETE FROM period_logs WHERE id = ?', [req.params.id]);
+  res.json({ success: true, id: req.params.id });
+});
+
+// 8. CHORES
+app.get('/api/chores', async (req, res) => {
+  const payload = await getFullPayload();
+  res.json(payload.chores || []);
+});
+
+app.post('/api/chores', async (req, res) => {
+  const chore = req.body;
+  const id = chore.id || `chore-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const now = new Date().toISOString();
+  await dbRun(`
+    INSERT INTO chores
+    (id, name, lastDoneDate, frequencyDays, nextDueDate, category, notes, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [
+    id,
+    chore.name,
+    chore.lastDoneDate,
+    Number(chore.frequencyDays) || 7,
+    chore.nextDueDate,
+    chore.category || 'General',
+    chore.notes || '',
+    now,
+    now
+  ]);
+  res.json({ ...chore, id, createdAt: now, updatedAt: now });
+});
+
+app.put('/api/chores/:id', async (req, res) => {
+  const id = req.params.id;
+  const chore = req.body;
+  const now = new Date().toISOString();
+  await dbRun(`
+    UPDATE chores SET
+      name = ?, lastDoneDate = ?, frequencyDays = ?, nextDueDate = ?, category = ?, notes = ?, updatedAt = ?
+    WHERE id = ?
+  `, [
+    chore.name,
+    chore.lastDoneDate,
+    Number(chore.frequencyDays) || 7,
+    chore.nextDueDate,
+    chore.category || 'General',
+    chore.notes || '',
+    now,
+    id
+  ]);
+  res.json({ ...chore, id, updatedAt: now });
+});
+
+app.delete('/api/chores/:id', async (req, res) => {
+  await dbRun('DELETE FROM chores WHERE id = ?', [req.params.id]);
   res.json({ success: true, id: req.params.id });
 });
 
