@@ -184,6 +184,14 @@ const SCHEMA_TABLES = [
     createdAt TEXT,
     updatedAt TEXT
   )`,
+  `CREATE TABLE IF NOT EXISTS meal_plans (
+    day TEXT PRIMARY KEY,
+    morning TEXT DEFAULT '',
+    meals TEXT DEFAULT '',
+    evening TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    updatedAt TEXT
+  )`,
   `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`
 ];
 
@@ -280,6 +288,8 @@ export async function getFullPayload() {
 
   const chores = await dbAll('SELECT * FROM chores ORDER BY nextDueDate ASC');
 
+  const mealPlans = await dbAll('SELECT * FROM meal_plans');
+
   const lastUpdatedRow = await dbGet("SELECT value FROM meta WHERE key = 'lastUpdated'");
 
   return {
@@ -307,6 +317,7 @@ export async function getFullPayload() {
       logs: periodLogs
     },
     chores,
+    meals: mealPlans,
     meta: {
       version: '3.0-persistent',
       database: isCloudDb ? 'Turso Cloud SQLite' : 'Local SQLite',
@@ -465,6 +476,17 @@ export async function importFullPayload(data) {
       }
     }
 
+    // 9. Meal Plan
+    if (Array.isArray(data.meals)) {
+      batch.push({ sql: 'DELETE FROM meal_plans', args: [] });
+      for (const m of data.meals) {
+        batch.push({
+          sql: `INSERT INTO meal_plans (day, morning, meals, evening, notes, updatedAt) VALUES (?, ?, ?, ?, ?, ?)`,
+          args: [m.day, m.morning || '', m.meals || '', m.evening || '', m.notes || '', m.updatedAt || now]
+        });
+      }
+    }
+
     batch.push({
       sql: `INSERT OR REPLACE INTO meta (key, value) VALUES ('lastUpdated', ?)`,
       args: [now]
@@ -593,6 +615,16 @@ export async function importFullPayload(data) {
         sqlJsInstance.run(`
           INSERT INTO chores (id, name, lastDoneDate, frequencyDays, nextDueDate, category, notes, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [chore.id, chore.name, chore.lastDoneDate, Number(chore.frequencyDays) || 7, chore.nextDueDate, chore.category || 'General', chore.notes || '', chore.createdAt || now, chore.updatedAt || now]);
+      }
+    }
+
+    // 9. Meal Plan
+    if (Array.isArray(data.meals)) {
+      sqlJsInstance.run('DELETE FROM meal_plans');
+      for (const m of data.meals) {
+        sqlJsInstance.run(`
+          INSERT INTO meal_plans (day, morning, meals, evening, notes, updatedAt) VALUES (?, ?, ?, ?, ?, ?)
+        `, [m.day, m.morning || '', m.meals || '', m.evening || '', m.notes || '', m.updatedAt || now]);
       }
     }
 
