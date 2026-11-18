@@ -37,6 +37,21 @@ const INITIAL_DATA = {
   }
 };
 
+function hasContent(d) {
+  if (!d) return false;
+  return (
+    (d.shelf?.items?.length || 0) > 0 ||
+    (d.budget?.goals?.length || 0) > 0 ||
+    (d.budget?.expenses?.length || 0) > 0 ||
+    (d.contacts?.length || 0) > 0 ||
+    (d.vault?.passwords?.length || 0) > 0 ||
+    (d.vault?.links?.length || 0) > 0 ||
+    (d.wishlist?.items?.length || 0) > 0 ||
+    (d.jobs?.length || 0) > 0 ||
+    (d.period?.logs?.length || 0) > 0
+  );
+}
+
 export function AppProvider({ children }) {
   // Navigation
   const [currentApp, setCurrentApp] = useState(() => {
@@ -126,32 +141,6 @@ export function AppProvider({ children }) {
     dataRef.current = data;
   }, [data]);
 
-  // Pull latest updates from SQLite server
-  const pullLatest = useCallback(async (notifyIfCurrent = false) => {
-    if (isPushingRef.current) return;
-    try {
-      const res = await fetch('/api/data');
-      if (!res.ok) throw new Error('Failed to fetch from server');
-      const serverDb = await res.json();
-      if (serverDb && serverDb.shelf) {
-        const serverTime = serverDb.meta?.lastUpdated;
-        const localTime = dataRef.current?.meta?.lastUpdated;
-
-        if (!localTime || serverTime !== localTime) {
-          setData(serverDb);
-          setLastSynced(new Date());
-          setSyncState('synced');
-          if (notifyIfCurrent) showToast('Synchronized with server');
-        } else {
-          setSyncState('synced');
-          if (notifyIfCurrent) showToast('Already up to date');
-        }
-      }
-    } catch {
-      setSyncState('offline');
-    }
-  }, [showToast]);
-
   // Push local updates to SQLite server
   const pushUpdate = useCallback(async (updatedData) => {
     isPushingRef.current = true;
@@ -178,6 +167,41 @@ export function AppProvider({ children }) {
       isPushingRef.current = false;
     }
   }, []);
+
+  // Pull latest updates from SQLite server
+  const pullLatest = useCallback(async (notifyIfCurrent = false) => {
+    if (isPushingRef.current) return;
+    try {
+      const res = await fetch('/api/data');
+      if (!res.ok) throw new Error('Failed to fetch from server');
+      const serverDb = await res.json();
+      if (serverDb && serverDb.shelf) {
+        const serverTime = serverDb.meta?.lastUpdated;
+        const localTime = dataRef.current?.meta?.lastUpdated;
+        const localHasData = hasContent(dataRef.current);
+        const serverHasData = hasContent(serverDb);
+
+        // Safety Guard: If server is completely empty/uninitialized, but client has local data,
+        // automatically seed the server instead of wiping client!
+        if (!serverHasData && !serverTime && localHasData) {
+          pushUpdate(dataRef.current);
+          return;
+        }
+
+        if (!localTime || serverTime !== localTime) {
+          setData(serverDb);
+          setLastSynced(new Date());
+          setSyncState('synced');
+          if (notifyIfCurrent) showToast('Synchronized with server');
+        } else {
+          setSyncState('synced');
+          if (notifyIfCurrent) showToast('Already up to date');
+        }
+      }
+    } catch {
+      setSyncState('offline');
+    }
+  }, [showToast, pushUpdate]);
 
   // Update local state and immediately push to server
   const updateAndSync = useCallback((updater) => {
