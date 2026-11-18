@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ContactCache — Cloud Synced Contacts</title>
+  
+  <!-- PWA & Meta tags -->
+  <meta name="description" content="Cross-device synced contact manager powered by JSONBin. Add, edit, and delete contacts from any phone, tablet, or PC.">
+  <meta name="theme-color" content="#030712">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ContactCache">
+  
+  <!-- Manifest & Icons -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon.png">
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <img src="/icons/icon.svg" alt="ContactCache Logo" class="brand-icon">
+        <div class="brand-text">
+          <h1>ContactCache</h1>
+          <div class="sync-status" id="syncStatus">
+            <span class="status-dot"></span>
+            <span class="status-label" id="statusLabel">Connecting...</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <!-- Sync Button -->
+        <button id="btnSync" class="btn btn-secondary btn-icon-only" title="Sync contacts">
+          <svg class="sync-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        </button>
+
+        <!-- New Contact Button -->
+        <button id="btnOpenAddModal" class="btn btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span class="btn-text">Add Contact</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-content">
+
+    <!-- Controls Bar: Search & Tag Filter -->
+    <div class="controls-panel">
+      <!-- Search Input -->
+      <div class="search-box">
+        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="searchInput" placeholder="Search contacts by name, phone, mail, or tag..." autocomplete="off">
+        <button id="btnClearSearch" class="btn-clear" style="display: none;">&times;</button>
+      </div>
+
+      <!-- Tag Filters -->
+      <div class="tag-filter-container">
+        <div class="tag-filters" id="tagFilters">
+          <button class="tag-chip active" data-tag="ALL">All Contacts</button>
+          <!-- Dynamic tags will be injected here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats summary bar -->
+    <div class="stats-bar">
+      <span id="contactCount">0 Contacts</span>
+      <span class="stats-divider">•</span>
+      <span id="lastSyncedTime">Last synced: Just now</span>
+    </div>
+
+    <!-- Contacts Grid / List -->
+    <div class="contacts-grid" id="contactsGrid">
+      <!-- Rendered via JS -->
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState" style="display: none;">
+      <div class="empty-icon-wrap">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      </div>
+      <h3 id="emptyTitle">No Contacts Found</h3>
+      <p id="emptySubtitle">Tap "Add Contact" to save your first contact.</p>
+      <button class="btn btn-primary" id="btnEmptyAdd">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <span>Add Your First Contact</span>
+      </button>
+    </div>
+  </main>
+
+  <!-- Modal: Add / Edit Contact -->
+  <div class="modal-backdrop" id="contactModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modalTitle">New Contact</h2>
+        <button class="btn-close" id="btnCloseContactModal" aria-label="Close">&times;</button>
+      </div>
+      
+      <form id="contactForm">
+        <input type="hidden" id="contactId">
+        
+        <!-- Field 1: Name (Required) -->
+        <div class="form-group">
+          <label for="inputName">Full Name <span class="required-badge">* Required</span></label>
+          <div class="input-icon-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <input type="text" id="inputName" placeholder="e.g. John Doe" required autocomplete="name">
+          </div>
+          <span class="field-help">Only Name is required. All other fields are optional.</span>
+        </div>
+
+        <!-- Field 2: Mail (Optional) -->
+        <div class="form-group">
+          <label for="inputEmail">Mail <span class="optional-badge">Optional</span></label>
+          <div class="input-icon-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            <input type="email" id="inputEmail" placeholder="e.g. john@example.com" autocomplete="email">
+          </div>
+        </div>
+
+        <!-- Field 3: Phone Number (Optional) -->
+        <div class="form-group">
+          <label for="inputPhone">Phone Number <span class="optional-badge">Optional</span></label>
+          <div class="input-icon-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            <input type="tel" id="inputPhone" placeholder="e.g. +1 555-0199" autocomplete="tel">
+          </div>
+        </div>
+
+        <!-- Field 4: Tag (Optional) -->
+        <div class="form-group">
+          <label for="inputTag">Tag <span class="optional-badge">Optional</span></label>
+          <div class="input-icon-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            <input type="text" id="inputTag" placeholder="e.g. Work, Family, Friend, VIP..." list="tagSuggestions">
+            <datalist id="tagSuggestions">
+              <option value="Work">
+              <option value="Family">
+              <option value="Friends">
+              <option value="VIP">
+              <option value="Client">
+              <option value="Emergency">
+            </datalist>
+          </div>
+          <!-- Quick Tag Selectors -->
+          <div class="quick-tags">
+            <span class="quick-tag-label">Quick select:</span>
+            <button type="button" class="btn-quick-tag" data-tag="Work">Work</button>
+            <button type="button" class="btn-quick-tag" data-tag="Family">Family</button>
+            <button type="button" class="btn-quick-tag" data-tag="Friends">Friends</button>
+            <button type="button" class="btn-quick-tag" data-tag="VIP">VIP</button>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btnCancelContact">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveContact">
+            <span>Save Contact</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Delete Confirmation -->
+  <div class="modal-backdrop" id="deleteModal">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h2>Delete Contact</h2>
+        <button class="btn-close" id="btnCloseDeleteModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete <strong id="deleteContactName">this contact</strong>?</p>
+        <p class="text-muted">This will sync immediately across all connected devices.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btnCancelDelete">Cancel</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmDelete">Delete Contact</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Floating Add Button for Mobile -->
+  <button id="btnFabAdd" class="fab-btn" title="Add Contact" aria-label="Add Contact">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+  </button>
+
+  <script src="/app.js"></script>
+</body>
+</html>
