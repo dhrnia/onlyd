@@ -165,6 +165,19 @@ export async function initDb() {
       name TEXT PRIMARY KEY
     );
 
+    CREATE TABLE IF NOT EXISTS job_applications (
+      id TEXT PRIMARY KEY,
+      company TEXT NOT NULL,
+      role TEXT NOT NULL,
+      source TEXT,
+      roundsReached TEXT,
+      status TEXT,
+      notes TEXT,
+      appliedDate TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS meta (
       key TEXT PRIMARY KEY,
       value TEXT
@@ -202,6 +215,8 @@ export async function getFullPayload() {
   }));
   const wishlistCategories = (await dbAll('SELECT name FROM wishlist_categories')).map(c => c.name);
 
+  const jobApplications = await dbAll('SELECT * FROM job_applications ORDER BY createdAt DESC');
+
   const lastUpdatedRow = await dbGet("SELECT value FROM meta WHERE key = 'lastUpdated'");
 
   return {
@@ -223,8 +238,9 @@ export async function getFullPayload() {
       items: wishlistItems,
       categories: wishlistCategories.length > 0 ? wishlistCategories : ["Tech", "Workstation", "Books", "Lifestyle", "Fashion", "Other"]
     },
+    jobs: jobApplications,
     meta: {
-      version: '2.0-sqlite',
+      version: '2.1-sqlite',
       database: 'SQLite (WebAssembly)',
       lastUpdated: lastUpdatedRow?.value || new Date().toISOString()
     }
@@ -371,6 +387,26 @@ export async function importFullPayload(data) {
 
   for (const cat of (data.wishlist?.categories || [])) {
     if (cat) await dbRun('INSERT OR IGNORE INTO wishlist_categories (name) VALUES (?)', [cat]);
+  }
+
+  // Jobs
+  for (const job of (data.jobs || [])) {
+    await dbRun(`
+      INSERT OR REPLACE INTO job_applications 
+      (id, company, role, source, roundsReached, status, notes, appliedDate, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      job.id,
+      job.company,
+      job.role,
+      job.source || '',
+      job.roundsReached || 'Applied',
+      job.status || 'Applied',
+      job.notes || '',
+      job.appliedDate || now,
+      job.createdAt || now,
+      job.updatedAt || now
+    ]);
   }
 
   await dbRun("INSERT OR REPLACE INTO meta (key, value) VALUES ('lastUpdated', ?)", [now]);

@@ -5,7 +5,8 @@ import {
   IndianRupee,
   Users,
   KeyRound,
-  Gift
+  Gift,
+  Briefcase
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -15,7 +16,8 @@ export const MOBILE_NAV_ITEMS = [
   { id: 'budget', name: 'Budget', icon: IndianRupee },
   { id: 'contacts', name: 'Contacts', icon: Users },
   { id: 'vault', name: 'Vault', icon: KeyRound },
-  { id: 'wishlist', name: 'Wishlist', icon: Gift }
+  { id: 'wishlist', name: 'Wishlist', icon: Gift },
+  { id: 'jobs', name: 'Jobs', icon: Briefcase }
 ];
 
 export function MobileNavBar() {

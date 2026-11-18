@@ -4,7 +4,8 @@ import {
   IndianRupee,
   Users,
   KeyRound,
-  Gift
+  Gift,
+  Briefcase
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -16,12 +17,13 @@ export function HomeView() {
     { id: 'budget', name: 'Budget', icon: IndianRupee },
     { id: 'contacts', name: 'Contacts', icon: Users },
     { id: 'vault', name: 'Vault', icon: KeyRound },
-    { id: 'wishlist', name: 'Wishlist', icon: Gift }
+    { id: 'wishlist', name: 'Wishlist', icon: Gift },
+    { id: 'jobs', name: 'Jobs', icon: Briefcase }
   ];
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-6">
         {apps.map((app) => {
           const Icon = app.icon;
           return (
