@@ -33,6 +33,7 @@ const INITIAL_DATA = {
   },
   chores: [],
   meals: [],
+  deadlines: [],
   meta: {
     version: "1.0",
     lastUpdated: null
@@ -52,7 +53,8 @@ function hasContent(d) {
     (d.jobs?.length || 0) > 0 ||
     (d.period?.logs?.length || 0) > 0 ||
     (d.chores?.length || 0) > 0 ||
-    (d.meals?.length || 0) > 0
+    (d.meals?.length || 0) > 0 ||
+    (d.deadlines?.length || 0) > 0
   );
 }
 
@@ -60,7 +62,7 @@ export function AppProvider({ children }) {
   // Navigation
   const [currentApp, setCurrentApp] = useState(() => {
     const hash = window.location.hash.replace('#/', '').replace('#', '');
-    return ['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs', 'period', 'chores', 'meals'].includes(hash) ? hash : 'home';
+    return ['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs', 'period', 'chores', 'meals', 'deadlines'].includes(hash) ? hash : 'home';
   });
 
   // Main Data State (cached in localStorage)
@@ -97,7 +99,7 @@ export function AppProvider({ children }) {
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace('#/', '').replace('#', '');
-      if (['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs', 'period', 'chores', 'meals'].includes(hash)) {
+      if (['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs', 'period', 'chores', 'meals', 'deadlines'].includes(hash)) {
         setCurrentApp(hash);
       } else {
         setCurrentApp('home');
@@ -866,6 +868,39 @@ export function AppProvider({ children }) {
     showToast(`Cleared ${day}`);
   };
 
+  // Deadlines App Methods
+  const addDeadline = (deadline) => {
+    const newDeadline = {
+      ...deadline,
+      id: deadline.id || `deadline-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    updateAndSync(prev => ({
+      ...prev,
+      deadlines: [...(prev.deadlines || []), newDeadline]
+    }));
+    showToast('Event saved to Deadlines');
+  };
+
+  const updateDeadline = (id, updates) => {
+    updateAndSync(prev => ({
+      ...prev,
+      deadlines: (prev.deadlines || []).map(d =>
+        d.id === id ? { ...d, ...updates, updatedAt: new Date().toISOString() } : d
+      )
+    }));
+    showToast('Deadline updated');
+  };
+
+  const deleteDeadline = (id) => {
+    updateAndSync(prev => ({
+      ...prev,
+      deadlines: (prev.deadlines || []).filter(d => d.id !== id)
+    }));
+    showToast('Event removed');
+  };
+
   // Full Import JSON
   const importDatabase = async (jsonObj) => {
     try {
@@ -958,6 +993,11 @@ export function AppProvider({ children }) {
         // Meal Plan
         updateMealPlan,
         clearMealPlan,
+
+        // Deadlines
+        addDeadline,
+        updateDeadline,
+        deleteDeadline,
 
         // Import
         importDatabase

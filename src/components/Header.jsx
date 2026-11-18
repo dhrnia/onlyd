@@ -9,6 +9,7 @@ import {
   CalendarHeart,
   CheckSquare,
   Utensils,
+  CalendarClock,
   Home,
   RefreshCw,
   Database,
@@ -29,6 +30,7 @@ export const APPS = [
   { id: 'period', name: 'Period', icon: CalendarHeart, desc: 'Cycle & phase tracker' },
   { id: 'chores', name: 'Chores', icon: CheckSquare, desc: 'Recurring task schedule' },
   { id: 'meals', name: 'Meal Plan', icon: Utensils, desc: 'Weekly recurring plan' },
+  { id: 'deadlines', name: 'Deadlines', icon: CalendarClock, desc: 'Events & countdowns' },
 ];
 
 export function Header() {

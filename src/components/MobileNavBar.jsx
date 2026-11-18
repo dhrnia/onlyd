@@ -9,7 +9,8 @@ import {
   Briefcase,
   CalendarHeart,
   CheckSquare,
-  Utensils
+  Utensils,
+  CalendarClock
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -23,7 +24,8 @@ export const MOBILE_NAV_ITEMS = [
   { id: 'jobs', name: 'Jobs', icon: Briefcase },
   { id: 'period', name: 'Period', icon: CalendarHeart },
   { id: 'chores', name: 'Chores', icon: CheckSquare },
-  { id: 'meals', name: 'Meals', icon: Utensils }
+  { id: 'meals', name: 'Meals', icon: Utensils },
+  { id: 'deadlines', name: 'Deadlines', icon: CalendarClock }
 ];
 
 export function MobileNavBar() {

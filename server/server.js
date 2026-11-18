@@ -60,7 +60,8 @@ app.get('/api/status', async (req, res) => {
         jobs: payload.jobs?.length || 0,
         periodLogs: payload.period?.logs?.length || 0,
         chores: payload.chores?.length || 0,
-        meals: payload.meals?.length || 0
+        meals: payload.meals?.length || 0,
+        deadlines: payload.deadlines?.length || 0
       }
     });
   } catch (err) {
@@ -557,6 +558,58 @@ app.put('/api/meals/:day', async (req, res) => {
     now
   ]);
   res.json({ ...m, day, updatedAt: now });
+});
+
+// 10. DEADLINES
+app.get('/api/deadlines', async (req, res) => {
+  const payload = await getFullPayload();
+  res.json(payload.deadlines || []);
+});
+
+app.post('/api/deadlines', async (req, res) => {
+  const d = req.body;
+  const id = d.id || `deadline-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const now = new Date().toISOString();
+  await dbRun(`
+    INSERT INTO deadlines
+    (id, title, date, category, recurring, notes, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `, [
+    id,
+    d.title,
+    d.date,
+    d.category || 'General',
+    d.recurring || 'none',
+    d.notes || '',
+    now,
+    now
+  ]);
+  res.json({ ...d, id, createdAt: now, updatedAt: now });
+});
+
+app.put('/api/deadlines/:id', async (req, res) => {
+  const id = req.params.id;
+  const d = req.body;
+  const now = new Date().toISOString();
+  await dbRun(`
+    UPDATE deadlines SET
+      title = ?, date = ?, category = ?, recurring = ?, notes = ?, updatedAt = ?
+    WHERE id = ?
+  `, [
+    d.title,
+    d.date,
+    d.category || 'General',
+    d.recurring || 'none',
+    d.notes || '',
+    now,
+    id
+  ]);
+  res.json({ ...d, id, updatedAt: now });
+});
+
+app.delete('/api/deadlines/:id', async (req, res) => {
+  await dbRun('DELETE FROM deadlines WHERE id = ?', [req.params.id]);
+  res.json({ success: true, id: req.params.id });
 });
 
 // Client SPA fallback

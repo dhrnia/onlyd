@@ -192,6 +192,16 @@ const SCHEMA_TABLES = [
     notes TEXT DEFAULT '',
     updatedAt TEXT
   )`,
+  `CREATE TABLE IF NOT EXISTS deadlines (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    date TEXT NOT NULL,
+    category TEXT DEFAULT 'General',
+    recurring TEXT DEFAULT 'none',
+    notes TEXT,
+    createdAt TEXT,
+    updatedAt TEXT
+  )`,
   `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`
 ];
 
@@ -290,6 +300,8 @@ export async function getFullPayload() {
 
   const mealPlans = await dbAll('SELECT * FROM meal_plans');
 
+  const deadlines = await dbAll('SELECT * FROM deadlines ORDER BY date ASC');
+
   const lastUpdatedRow = await dbGet("SELECT value FROM meta WHERE key = 'lastUpdated'");
 
   return {
@@ -318,6 +330,7 @@ export async function getFullPayload() {
     },
     chores,
     meals: mealPlans,
+    deadlines,
     meta: {
       version: '3.0-persistent',
       database: isCloudDb ? 'Turso Cloud SQLite' : 'Local SQLite',
@@ -487,6 +500,17 @@ export async function importFullPayload(data) {
       }
     }
 
+    // 10. Deadlines
+    if (Array.isArray(data.deadlines)) {
+      batch.push({ sql: 'DELETE FROM deadlines', args: [] });
+      for (const d of data.deadlines) {
+        batch.push({
+          sql: `INSERT INTO deadlines (id, title, date, category, recurring, notes, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [d.id, d.title, d.date, d.category || 'General', d.recurring || 'none', d.notes || '', d.createdAt || now, d.updatedAt || now]
+        });
+      }
+    }
+
     batch.push({
       sql: `INSERT OR REPLACE INTO meta (key, value) VALUES ('lastUpdated', ?)`,
       args: [now]
@@ -625,6 +649,16 @@ export async function importFullPayload(data) {
         sqlJsInstance.run(`
           INSERT INTO meal_plans (day, morning, meals, evening, notes, updatedAt) VALUES (?, ?, ?, ?, ?, ?)
         `, [m.day, m.morning || '', m.meals || '', m.evening || '', m.notes || '', m.updatedAt || now]);
+      }
+    }
+
+    // 10. Deadlines
+    if (Array.isArray(data.deadlines)) {
+      sqlJsInstance.run('DELETE FROM deadlines');
+      for (const d of data.deadlines) {
+        sqlJsInstance.run(`
+          INSERT INTO deadlines (id, title, date, category, recurring, notes, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [d.id, d.title, d.date, d.category || 'General', d.recurring || 'none', d.notes || '', d.createdAt || now, d.updatedAt || now]);
       }
     }
 

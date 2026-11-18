@@ -11,6 +11,7 @@ import { JobsApp } from './components/jobs/JobsApp';
 import { PeriodApp } from './components/period/PeriodApp';
 import { ChoresApp } from './components/chores/ChoresApp';
 import { MealPlanApp } from './components/meals/MealPlanApp';
+import { DeadlinesApp } from './components/deadlines/DeadlinesApp';
 import { DeviceSyncModal } from './components/DeviceSyncModal';
 import { MobileNavBar } from './components/MobileNavBar';
 import { PinLockScreen } from './components/PinLockScreen';
@@ -48,6 +49,7 @@ function AppContent() {
         {currentApp === 'period' && <PeriodApp />}
         {currentApp === 'chores' && <ChoresApp />}
         {currentApp === 'meals' && <MealPlanApp />}
+        {currentApp === 'deadlines' && <DeadlinesApp />}
       </main>
 
       {/* Minimal Footer */}
