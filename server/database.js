@@ -1,4 +1,4 @@
-import sqlite3 from 'sqlite3';
+import initSqlJs from 'sql.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -12,40 +12,66 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 const DB_FILE = path.join(DATA_DIR, 'onlyd.sqlite');
-const sqlite = sqlite3.verbose();
-const db = new sqlite.Database(DB_FILE);
 
-// Promisified helpers
-export function dbRun(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
-      if (err) reject(err);
-      else resolve(this);
-    });
-  });
+let dbInstance = null;
+
+// Save SQLite database file to disk
+export function saveDbToDisk() {
+  if (!dbInstance) return;
+  try {
+    const data = dbInstance.export();
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(DB_FILE, buffer);
+  } catch (err) {
+    console.error('Failed to save SQLite database to disk:', err);
+  }
 }
 
-export function dbGet(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
+// Helper to run queries with params and auto-save
+export async function dbRun(sql, params = []) {
+  if (!dbInstance) await initDb();
+  dbInstance.run(sql, params);
+  saveDbToDisk();
 }
 
-export function dbAll(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows || []);
-    });
-  });
+// Helper to query all matching rows as objects
+export async function dbAll(sql, params = []) {
+  if (!dbInstance) await initDb();
+  const stmt = dbInstance.prepare(sql);
+  stmt.bind(params);
+  const rows = [];
+  while (stmt.step()) {
+    rows.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return rows;
+}
+
+// Helper to get first matching row as object
+export async function dbGet(sql, params = []) {
+  const rows = await dbAll(sql, params);
+  return rows.length > 0 ? rows[0] : null;
 }
 
 // Initialize tables
 export async function initDb() {
-  await dbRun(`
+  if (dbInstance) return dbInstance;
+
+  const SQL = await initSqlJs();
+
+  if (fs.existsSync(DB_FILE)) {
+    try {
+      const fileBuffer = fs.readFileSync(DB_FILE);
+      dbInstance = new SQL.Database(fileBuffer);
+    } catch (err) {
+      console.warn('Could not load existing sqlite file, creating fresh:', err.message);
+      dbInstance = new SQL.Database();
+    }
+  } else {
+    dbInstance = new SQL.Database();
+  }
+
+  dbInstance.run(`
     CREATE TABLE IF NOT EXISTS shelf_items (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
@@ -60,23 +86,17 @@ export async function initDb() {
       collectionIds TEXT,
       createdAt TEXT,
       updatedAt TEXT
-    )
-  `);
+    );
 
-  await dbRun(`
     CREATE TABLE IF NOT EXISTS shelf_genres (
       name TEXT PRIMARY KEY
-    )
-  `);
+    );
 
-  await dbRun(`
     CREATE TABLE IF NOT EXISTS shelf_collections (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL
-    )
-  `);
+    );
 
-  await dbRun(`
     CREATE TABLE IF NOT EXISTS budget_goals (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -85,10 +105,8 @@ export async function initDb() {
       targetDate TEXT,
       createdAt TEXT,
       history TEXT
-    )
-  `);
+    );
 
-  await dbRun(`
     CREATE TABLE IF NOT EXISTS budget_expenses (
       id TEXT PRIMARY KEY,
       amount REAL NOT NULL,
@@ -96,10 +114,8 @@ export async function initDb() {
       paymentMethod TEXT,
       date TEXT,
       note TEXT
-    )
-  `);
+    );
 
-  await dbRun(`
     CREATE TABLE IF NOT EXISTS contacts (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -109,10 +125,8 @@ export async function initDb() {
       notes TEXT,
       createdAt TEXT,
       updatedAt TEXT
-    )
-  `);
+    );
 
-  await dbRun(`
     CREATE TABLE IF NOT EXISTS vault_passwords (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -123,10 +137,8 @@ export async function initDb() {
       category TEXT,
       notes TEXT,
       updatedAt TEXT
-    )
-  `);
+    );
 
-  await dbRun(`
     CREATE TABLE IF NOT EXISTS vault_links (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
@@ -134,10 +146,8 @@ export async function initDb() {
       tag TEXT,
       note TEXT,
       savedAt TEXT
-    )
-  `);
+    );
 
-  await dbRun(`
     CREATE TABLE IF NOT EXISTS wishlist_items (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
@@ -149,36 +159,20 @@ export async function initDb() {
       purchased INTEGER DEFAULT 0,
       createdAt TEXT,
       updatedAt TEXT
-    )
-  `);
+    );
 
-  await dbRun(`
     CREATE TABLE IF NOT EXISTS wishlist_categories (
       name TEXT PRIMARY KEY
-    )
-  `);
+    );
 
-  await dbRun(`
     CREATE TABLE IF NOT EXISTS meta (
       key TEXT PRIMARY KEY,
       value TEXT
-    )
+    );
   `);
 
-  // Migrate existing data from db.json if database is freshly created
-  const countRow = await dbGet('SELECT COUNT(*) as count FROM shelf_items');
-  if (countRow.count === 0) {
-    const jsonPath = path.join(DATA_DIR, 'db.json');
-    if (fs.existsSync(jsonPath)) {
-      try {
-        const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
-        await importFullPayload(raw);
-        console.log('✅ Successfully migrated db.json data into SQLite Database!');
-      } catch (err) {
-        console.warn('Could not migrate initial db.json:', err.message);
-      }
-    }
-  }
+  saveDbToDisk();
+  return dbInstance;
 }
 
 export async function getFullPayload() {
@@ -231,7 +225,7 @@ export async function getFullPayload() {
     },
     meta: {
       version: '2.0-sqlite',
-      database: 'SQLite',
+      database: 'SQLite (WebAssembly)',
       lastUpdated: lastUpdatedRow?.value || new Date().toISOString()
     }
   };
@@ -380,6 +374,5 @@ export async function importFullPayload(data) {
   }
 
   await dbRun("INSERT OR REPLACE INTO meta (key, value) VALUES ('lastUpdated', ?)", [now]);
+  saveDbToDisk();
 }
-
-export default db;
