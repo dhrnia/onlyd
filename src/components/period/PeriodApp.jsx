@@ -10,31 +10,33 @@ import {
   Trash2,
   ArrowLeft,
   X,
-  Clock,
-  Sparkles,
   Droplets,
-  Heart,
-  Info,
+  Sparkles,
   CalendarDays
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
 function addDays(dateStr, days) {
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d + Number(days)));
+  return date.toISOString().slice(0, 10);
 }
 
 function diffDays(dateStr1, dateStr2) {
-  const d1 = new Date(dateStr1 + 'T00:00:00');
-  const d2 = new Date(dateStr2 + 'T00:00:00');
-  return Math.round((d1 - d2) / (1000 * 60 * 60 * 24));
+  if (!dateStr1 || !dateStr2) return 0;
+  const [y1, m1, d1] = dateStr1.split('-').map(Number);
+  const [y2, m2, d2] = dateStr2.split('-').map(Number);
+  const utc1 = Date.UTC(y1, m1 - 1, d1);
+  const utc2 = Date.UTC(y2, m2 - 1, d2);
+  return Math.round((utc1 - utc2) / (1000 * 60 * 60 * 24));
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 const FLOW_LEVELS = ['Light', 'Medium', 'Heavy', 'Spotting'];
@@ -42,28 +44,34 @@ const FLOW_LEVELS = ['Light', 'Medium', 'Heavy', 'Spotting'];
 export function PeriodApp() {
   const { data, updatePeriodSettings, addPeriodLog, updatePeriodLog, deletePeriodLog, navigateTo } = useApp();
 
-  const periodData = data.period || {
+  const periodData = data?.period || {
     settings: { cycleDuration: 28, periodDuration: 5 },
     logs: []
   };
 
   const settings = periodData.settings || { cycleDuration: 28, periodDuration: 5 };
-  const logs = periodData.logs || [];
+  const logs = Array.isArray(periodData.logs) ? periodData.logs : [];
 
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, []);
 
   // Modals
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [editingLog, setEditingLog] = useState(null);
 
-  // Settings form state
+  // Settings form
   const [settingsForm, setSettingsForm] = useState({
     cycleDuration: settings.cycleDuration || 28,
     periodDuration: settings.periodDuration || 5
   });
 
-  // Log form state
+  // Log form
   const [logForm, setLogForm] = useState({
     startDate: todayStr,
     endDate: addDays(todayStr, (settings.periodDuration || 5) - 1),
@@ -71,11 +79,40 @@ export function PeriodApp() {
     notes: ''
   });
 
-  // Calendar View Month Navigation (YYYY-MM)
+  // Calendar View Month Navigation ({ year, month })
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
+    return { year: now.getFullYear(), month: now.getMonth() };
   });
+
+  const handlePrevMonth = () => {
+    setCurrentMonth(prev => {
+      let m = prev.month - 1;
+      let y = prev.year;
+      if (m < 0) {
+        m = 11;
+        y -= 1;
+      }
+      return { year: y, month: m };
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth(prev => {
+      let m = prev.month + 1;
+      let y = prev.year;
+      if (m > 11) {
+        m = 0;
+        y += 1;
+      }
+      return { year: y, month: m };
+    });
+  };
+
+  const handleToday = () => {
+    const now = new Date();
+    setCurrentMonth({ year: now.getFullYear(), month: now.getMonth() });
+  };
 
   // Determine latest period log or create a baseline
   const latestLog = useMemo(() => {
@@ -87,40 +124,35 @@ export function PeriodApp() {
 
   // Baseline start date (either latest log or 14 days ago if fresh)
   const baselineStartDate = useMemo(() => {
-    if (latestLog) return latestLog.startDate;
+    if (latestLog && latestLog.startDate) return latestLog.startDate;
     return addDays(todayStr, -14);
   }, [latestLog, todayStr]);
 
   const baselineEndDate = useMemo(() => {
-    if (latestLog) return latestLog.endDate;
+    if (latestLog && latestLog.endDate) return latestLog.endDate;
     return addDays(baselineStartDate, (settings.periodDuration || 5) - 1);
   }, [latestLog, baselineStartDate, settings.periodDuration]);
 
   // Current Cycle Day and Phase calculations
   const cycleMetrics = useMemo(() => {
-    const cycleLength = Number(settings.cycleDuration) || 28;
-    const periodLength = Number(settings.periodDuration) || 5;
+    const cycleLength = Math.max(15, Math.min(60, Number(settings.cycleDuration) || 28));
+    const periodLength = Math.max(1, Math.min(15, Number(settings.periodDuration) || 5));
 
     // Cycle day count (Day 1 = start date)
     const daysSinceStart = diffDays(todayStr, baselineStartDate);
-    const cycleDay = daysSinceStart >= 0 ? (daysSinceStart % cycleLength) + 1 : 1;
+    const cycleDay = (((daysSinceStart % cycleLength) + cycleLength) % cycleLength) + 1;
 
     // Next period prediction
     const cyclesElapsed = Math.floor(daysSinceStart / cycleLength);
     const nextStart = addDays(baselineStartDate, cycleLength * Math.max(1, cyclesElapsed + 1));
     const daysUntilNext = diffDays(nextStart, todayStr);
 
-    // Phase identification
-    // Day 1 to periodLength: Menstrual
-    // Day periodLength+1 to ovulationDay - 6: Follicular
-    // Day ovulationDay - 5 to ovulationDay + 1: Fertility Window / Ovulation
-    // Day ovulationDay + 2 to cycleLength: Luteal
     const ovulationDay = Math.max(periodLength + 2, cycleLength - 14);
     const fertileStartDay = Math.max(periodLength + 1, ovulationDay - 5);
     const fertileEndDay = ovulationDay + 1;
 
     let phaseName = 'Luteal Phase';
-    let phaseDescription = 'Progesterone peaks then drops. Rest, hydrate, and maintain steady nutrition.';
+    let phaseDescription = 'Progesterone dominance. Energy levels may gently taper; stay nourished and hydrated.';
     let isPeriodActive = false;
 
     if (daysSinceStart >= 0 && daysSinceStart < periodLength) {
@@ -133,7 +165,7 @@ export function PeriodApp() {
       isPeriodActive = true;
     } else if (cycleDay < fertileStartDay) {
       phaseName = 'Follicular Phase';
-      phaseDescription = 'Estrogen rises, boosting stamina, creativity, and energy.';
+      phaseDescription = 'Estrogen rises, boosting stamina, creativity, and daily focus.';
     } else if (cycleDay >= fertileStartDay && cycleDay <= fertileEndDay) {
       if (cycleDay === ovulationDay) {
         phaseName = 'Ovulation Day';
@@ -165,8 +197,8 @@ export function PeriodApp() {
   // Upcoming Cycles (next 4 cycles)
   const upcomingCycles = useMemo(() => {
     const list = [];
-    const cycleLength = Number(settings.cycleDuration) || 28;
-    const periodLength = Number(settings.periodDuration) || 5;
+    const cycleLength = Math.max(15, Math.min(60, Number(settings.cycleDuration) || 28));
+    const periodLength = Math.max(1, Math.min(15, Number(settings.periodDuration) || 5));
 
     for (let i = 1; i <= 4; i++) {
       const start = addDays(baselineStartDate, cycleLength * i);
@@ -184,19 +216,17 @@ export function PeriodApp() {
 
   // Calendar Days Matrix
   const calendarData = useMemo(() => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-
-    const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday
+    const { year, month } = currentMonth;
+    const firstDayIndex = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     // Map recorded period days for quick lookup
     const recordedPeriodSet = new Set();
     logs.forEach(log => {
-      let cur = log.startDate;
-      while (cur <= log.endDate) {
-        recordedPeriodSet.add(cur);
-        cur = addDays(cur, 1);
+      if (!log.startDate || !log.endDate) return;
+      const count = Math.max(1, Math.min(60, diffDays(log.endDate, log.startDate) + 1));
+      for (let d = 0; d < count; d++) {
+        recordedPeriodSet.add(addDays(log.startDate, d));
       }
     });
 
@@ -206,23 +236,23 @@ export function PeriodApp() {
     const predictedOvulationSet = new Set();
 
     upcomingCycles.forEach(cyc => {
-      let cur = cyc.startDate;
-      while (cur <= cyc.endDate) {
-        predictedPeriodSet.add(cur);
-        cur = addDays(cur, 1);
+      if (!cyc.startDate || !cyc.endDate) return;
+      const count = Math.max(1, Math.min(30, diffDays(cyc.endDate, cyc.startDate) + 1));
+      for (let d = 0; d < count; d++) {
+        predictedPeriodSet.add(addDays(cyc.startDate, d));
       }
-      predictedOvulationSet.add(cyc.ovulationDate);
-      for (let offset = -5; offset <= 1; offset++) {
-        predictedFertileSet.add(addDays(cyc.ovulationDate, offset));
+      if (cyc.ovulationDate) {
+        predictedOvulationSet.add(cyc.ovulationDate);
+        for (let offset = -5; offset <= 1; offset++) {
+          predictedFertileSet.add(addDays(cyc.ovulationDate, offset));
+        }
       }
     });
 
     const days = [];
-    // Padding before 1st day of month
     for (let i = 0; i < firstDayIndex; i++) {
       days.push(null);
     }
-    // Days of month
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       days.push({
@@ -238,6 +268,11 @@ export function PeriodApp() {
 
     return days;
   }, [currentMonth, logs, upcomingCycles, todayStr]);
+
+  const monthLabel = useMemo(() => {
+    const d = new Date(Date.UTC(currentMonth.year, currentMonth.month, 1));
+    return d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'long', year: 'numeric' });
+  }, [currentMonth]);
 
   // Handlers
   const handleOpenSettings = () => {
@@ -439,33 +474,26 @@ export function PeriodApp() {
             <div className="flex items-center gap-2">
               <CalendarIcon size={18} className="text-black" />
               <h2 className="text-base font-bold text-black">
-                {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                {monthLabel}
               </h2>
             </div>
 
             <div className="flex items-center gap-1.5">
               <button
-                onClick={() => {
-                  const now = new Date();
-                  setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1));
-                }}
+                onClick={handleToday}
                 className="rounded-lg border border-black/10 px-2.5 py-1 text-xs font-semibold text-black hover:bg-black/5"
               >
                 Today
               </button>
               <button
-                onClick={() => {
-                  setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-                }}
+                onClick={handlePrevMonth}
                 className="rounded-lg border border-black/10 p-1.5 text-black/70 hover:bg-black/5 hover:text-black"
                 aria-label="Previous Month"
               >
                 <ChevronLeft size={16} />
               </button>
               <button
-                onClick={() => {
-                  setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-                }}
+                onClick={handleNextMonth}
                 className="rounded-lg border border-black/10 p-1.5 text-black/70 hover:bg-black/5 hover:text-black"
                 aria-label="Next Month"
               >
@@ -747,7 +775,6 @@ export function PeriodApp() {
                   value={logForm.startDate}
                   onChange={(e) => {
                     const newStart = e.target.value;
-                    const daysSpan = Math.max(0, diffDays(logForm.endDate, logForm.startDate));
                     setLogForm({
                       ...logForm,
                       startDate: newStart,

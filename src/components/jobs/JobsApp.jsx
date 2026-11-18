@@ -351,18 +351,6 @@ export function JobsApp() {
                   onChange={(e) => setForm({ ...form, source: e.target.value })}
                   className="w-full rounded-xl border border-black/15 bg-white p-2.5 text-xs text-black focus:border-black focus:outline-none"
                 />
-                <div className="flex flex-wrap gap-1 mt-1.5">
-                  {SOURCE_SUGGESTIONS.slice(0, 4).map(src => (
-                    <button
-                      key={src}
-                      type="button"
-                      onClick={() => setForm({ ...form, source: src })}
-                      className="rounded-lg border border-black/10 bg-[#f7f7f5] px-2 py-0.5 text-[10px] text-black/70 hover:bg-black/10"
-                    >
-                      {src}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
