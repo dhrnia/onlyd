@@ -284,193 +284,227 @@ export async function getFullPayload() {
 }
 
 export async function importFullPayload(data) {
+  if (!dbInstance) await initDb();
   const now = new Date().toISOString();
 
-  // Shelf
-  for (const item of (data.shelf?.items || [])) {
-    await dbRun(`
-      INSERT OR REPLACE INTO shelf_items 
-      (id, title, creator, type, status, genre, rating, notes, coverUrl, favorite, collectionIds, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      item.id,
-      item.title,
-      item.creator || '',
-      item.type || 'Book',
-      item.status || 'Currently Reading',
-      item.genre || '',
-      item.rating || 5,
-      item.notes || '',
-      item.coverUrl || '',
-      item.favorite ? 1 : 0,
-      JSON.stringify(item.collectionIds || []),
-      item.createdAt || now,
-      item.updatedAt || now
-    ]);
+  // 1. Shelf
+  if (Array.isArray(data.shelf?.items)) {
+    dbInstance.run('DELETE FROM shelf_items');
+    for (const item of data.shelf.items) {
+      dbInstance.run(`
+        INSERT INTO shelf_items 
+        (id, title, creator, type, status, genre, rating, notes, coverUrl, favorite, collectionIds, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        item.id,
+        item.title,
+        item.creator || '',
+        item.type || 'Book',
+        item.status || 'Currently Reading',
+        item.genre || '',
+        item.rating || 5,
+        item.notes || '',
+        item.coverUrl || '',
+        item.favorite ? 1 : 0,
+        JSON.stringify(item.collectionIds || []),
+        item.createdAt || now,
+        item.updatedAt || now
+      ]);
+    }
   }
 
-  for (const g of (data.shelf?.genres || [])) {
-    if (g) await dbRun('INSERT OR IGNORE INTO shelf_genres (name) VALUES (?)', [g]);
+  if (Array.isArray(data.shelf?.genres)) {
+    for (const g of data.shelf.genres) {
+      if (g) dbInstance.run('INSERT OR IGNORE INTO shelf_genres (name) VALUES (?)', [g]);
+    }
   }
 
-  for (const c of (data.shelf?.collections || [])) {
-    if (c?.id) await dbRun('INSERT OR REPLACE INTO shelf_collections (id, name) VALUES (?, ?)', [c.id, c.name]);
+  if (Array.isArray(data.shelf?.collections)) {
+    for (const c of data.shelf.collections) {
+      if (c?.id) dbInstance.run('INSERT OR REPLACE INTO shelf_collections (id, name) VALUES (?, ?)', [c.id, c.name]);
+    }
   }
 
-  // Budget
-  for (const g of (data.budget?.goals || [])) {
-    await dbRun(`
-      INSERT OR REPLACE INTO budget_goals 
-      (id, name, targetAmount, currentAmount, targetDate, createdAt, history)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [
-      g.id,
-      g.name,
-      Number(g.targetAmount) || 0,
-      Number(g.currentAmount) || 0,
-      g.targetDate || '',
-      g.createdAt || now,
-      JSON.stringify(g.history || [])
-    ]);
+  // 2. Budget
+  if (Array.isArray(data.budget?.goals)) {
+    dbInstance.run('DELETE FROM budget_goals');
+    for (const g of data.budget.goals) {
+      dbInstance.run(`
+        INSERT INTO budget_goals 
+        (id, name, targetAmount, currentAmount, targetDate, createdAt, history)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [
+        g.id,
+        g.name,
+        Number(g.targetAmount) || 0,
+        Number(g.currentAmount) || 0,
+        g.targetDate || '',
+        g.createdAt || now,
+        JSON.stringify(g.history || [])
+      ]);
+    }
   }
 
-  for (const exp of (data.budget?.expenses || [])) {
-    await dbRun(`
-      INSERT OR REPLACE INTO budget_expenses 
-      (id, amount, category, paymentMethod, date, note)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [
-      exp.id,
-      Number(exp.amount) || 0,
-      exp.category || '',
-      exp.paymentMethod || 'UPI',
-      exp.date || now,
-      exp.note || ''
-    ]);
+  if (Array.isArray(data.budget?.expenses)) {
+    dbInstance.run('DELETE FROM budget_expenses');
+    for (const exp of data.budget.expenses) {
+      dbInstance.run(`
+        INSERT INTO budget_expenses 
+        (id, amount, category, paymentMethod, date, note)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [
+        exp.id,
+        Number(exp.amount) || 0,
+        exp.category || '',
+        exp.paymentMethod || 'UPI',
+        exp.date || now,
+        exp.note || ''
+      ]);
+    }
   }
 
-  // Contacts
-  for (const c of (data.contacts || [])) {
-    await dbRun(`
-      INSERT OR REPLACE INTO contacts 
-      (id, name, phone, email, tag, notes, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      c.id,
-      c.name,
-      c.phone || '',
-      c.email || '',
-      c.tag || '',
-      c.notes || '',
-      c.createdAt || now,
-      c.updatedAt || now
-    ]);
+  // 3. Contacts
+  if (Array.isArray(data.contacts)) {
+    dbInstance.run('DELETE FROM contacts');
+    for (const c of data.contacts) {
+      dbInstance.run(`
+        INSERT INTO contacts 
+        (id, name, phone, email, tag, notes, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        c.id,
+        c.name,
+        c.phone || '',
+        c.email || '',
+        c.tag || '',
+        c.notes || '',
+        c.createdAt || now,
+        c.updatedAt || now
+      ]);
+    }
   }
 
-  // Vault
-  for (const p of (data.vault?.passwords || [])) {
-    await dbRun(`
-      INSERT OR REPLACE INTO vault_passwords 
-      (id, name, username, email, password, url, category, notes, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      p.id,
-      p.name,
-      p.username || '',
-      p.email || '',
-      p.password || '',
-      p.url || '',
-      p.category || 'Personal',
-      p.notes || '',
-      p.updatedAt || now
-    ]);
+  // 4. Vault
+  if (Array.isArray(data.vault?.passwords)) {
+    dbInstance.run('DELETE FROM vault_passwords');
+    for (const p of data.vault.passwords) {
+      dbInstance.run(`
+        INSERT INTO vault_passwords 
+        (id, name, username, email, password, url, category, notes, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        p.id,
+        p.name,
+        p.username || '',
+        p.email || '',
+        p.password || '',
+        p.url || '',
+        p.category || 'Personal',
+        p.notes || '',
+        p.updatedAt || now
+      ]);
+    }
   }
 
-  for (const l of (data.vault?.links || [])) {
-    await dbRun(`
-      INSERT OR REPLACE INTO vault_links 
-      (id, title, url, tag, note, savedAt)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [
-      l.id,
-      l.title,
-      l.url,
-      l.tag || 'General',
-      l.note || '',
-      l.savedAt || now
-    ]);
+  if (Array.isArray(data.vault?.links)) {
+    dbInstance.run('DELETE FROM vault_links');
+    for (const l of data.vault.links) {
+      dbInstance.run(`
+        INSERT INTO vault_links 
+        (id, title, url, tag, note, savedAt)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [
+        l.id,
+        l.title,
+        l.url,
+        l.tag || 'General',
+        l.note || '',
+        l.savedAt || now
+      ]);
+    }
   }
 
-  // Wishlist
-  for (const w of (data.wishlist?.items || [])) {
-    await dbRun(`
-      INSERT OR REPLACE INTO wishlist_items 
-      (id, title, price, category, priority, url, notes, purchased, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      w.id,
-      w.title,
-      Number(w.price) || 0,
-      w.category || 'Tech',
-      w.priority || 'high',
-      w.url || '',
-      w.notes || '',
-      w.purchased ? 1 : 0,
-      w.createdAt || now,
-      w.updatedAt || now
-    ]);
+  // 5. Wishlist
+  if (Array.isArray(data.wishlist?.items)) {
+    dbInstance.run('DELETE FROM wishlist_items');
+    for (const w of data.wishlist.items) {
+      dbInstance.run(`
+        INSERT INTO wishlist_items 
+        (id, title, price, category, priority, url, notes, purchased, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        w.id,
+        w.title,
+        Number(w.price) || 0,
+        w.category || 'Tech',
+        w.priority || 'high',
+        w.url || '',
+        w.notes || '',
+        w.purchased ? 1 : 0,
+        w.createdAt || now,
+        w.updatedAt || now
+      ]);
+    }
   }
 
-  for (const cat of (data.wishlist?.categories || [])) {
-    if (cat) await dbRun('INSERT OR IGNORE INTO wishlist_categories (name) VALUES (?)', [cat]);
+  if (Array.isArray(data.wishlist?.categories)) {
+    for (const cat of data.wishlist.categories) {
+      if (cat) dbInstance.run('INSERT OR IGNORE INTO wishlist_categories (name) VALUES (?)', [cat]);
+    }
   }
 
-  // Jobs
-  for (const job of (data.jobs || [])) {
-    await dbRun(`
-      INSERT OR REPLACE INTO job_applications 
-      (id, company, role, source, roundsReached, status, notes, appliedDate, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      job.id,
-      job.company,
-      job.role,
-      job.source || '',
-      job.roundsReached || 'Applied',
-      job.status || 'Applied',
-      job.notes || '',
-      job.appliedDate || now,
-      job.createdAt || now,
-      job.updatedAt || now
-    ]);
+  // 6. Jobs
+  if (Array.isArray(data.jobs)) {
+    dbInstance.run('DELETE FROM job_applications');
+    for (const job of data.jobs) {
+      dbInstance.run(`
+        INSERT INTO job_applications 
+        (id, company, role, source, roundsReached, status, notes, appliedDate, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        job.id,
+        job.company,
+        job.role,
+        job.source || '',
+        job.roundsReached || 'Applied',
+        job.status || 'Applied',
+        job.notes || '',
+        job.appliedDate || now,
+        job.createdAt || now,
+        job.updatedAt || now
+      ]);
+    }
   }
 
-  // Period Tracker
+  // 7. Period Tracker
   if (data.period?.settings) {
     const s = data.period.settings;
-    await dbRun(`
+    dbInstance.run(`
       INSERT OR REPLACE INTO period_settings (id, cycleDuration, periodDuration, updatedAt)
       VALUES ('default', ?, ?, ?)
     `, [Number(s.cycleDuration) || 28, Number(s.periodDuration) || 5, now]);
   }
 
-  for (const log of (data.period?.logs || [])) {
-    await dbRun(`
-      INSERT OR REPLACE INTO period_logs
-      (id, startDate, endDate, flow, notes, symptoms, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
-      log.id,
-      log.startDate,
-      log.endDate,
-      log.flow || 'Medium',
-      log.notes || '',
-      JSON.stringify(log.symptoms || []),
-      log.createdAt || now,
-      log.updatedAt || now
-    ]);
+  if (Array.isArray(data.period?.logs)) {
+    dbInstance.run('DELETE FROM period_logs');
+    for (const log of data.period.logs) {
+      dbInstance.run(`
+        INSERT INTO period_logs
+        (id, startDate, endDate, flow, notes, symptoms, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        log.id,
+        log.startDate,
+        log.endDate,
+        log.flow || 'Medium',
+        log.notes || '',
+        JSON.stringify(log.symptoms || []),
+        log.createdAt || now,
+        log.updatedAt || now
+      ]);
+    }
   }
 
-  await dbRun("INSERT OR REPLACE INTO meta (key, value) VALUES ('lastUpdated', ?)", [now]);
+  dbInstance.run("INSERT OR REPLACE INTO meta (key, value) VALUES ('lastUpdated', ?)", [now]);
   saveDbToDisk();
 }
