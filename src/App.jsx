@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/Header';
 import { HomeView } from './components/HomeView';
@@ -9,10 +9,25 @@ import { VaultApp } from './components/vault/VaultApp';
 import { WishlistApp } from './components/wishlist/WishlistApp';
 import { DeviceSyncModal } from './components/DeviceSyncModal';
 import { MobileNavBar } from './components/MobileNavBar';
+import { PinLockScreen } from './components/PinLockScreen';
 import { Check } from 'lucide-react';
+
+const PIN_SESSION_KEY = 'onlyd_unlocked_session';
 
 function AppContent() {
   const { currentApp, toast } = useApp();
+  const [isUnlocked, setIsUnlocked] = useState(() => {
+    return sessionStorage.getItem(PIN_SESSION_KEY) === 'true';
+  });
+
+  const handleUnlock = () => {
+    sessionStorage.setItem(PIN_SESSION_KEY, 'true');
+    setIsUnlocked(true);
+  };
+
+  if (!isUnlocked) {
+    return <PinLockScreen onUnlock={handleUnlock} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f7f7f5] text-[#171717] pb-20 lg:pb-0">
