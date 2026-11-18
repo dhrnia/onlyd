@@ -9,6 +9,7 @@ import { VaultApp } from './components/vault/VaultApp';
 import { WishlistApp } from './components/wishlist/WishlistApp';
 import { JobsApp } from './components/jobs/JobsApp';
 import { PeriodApp } from './components/period/PeriodApp';
+import { ChoresApp } from './components/chores/ChoresApp';
 import { DeviceSyncModal } from './components/DeviceSyncModal';
 import { MobileNavBar } from './components/MobileNavBar';
 import { PinLockScreen } from './components/PinLockScreen';
@@ -44,6 +45,7 @@ function AppContent() {
         {currentApp === 'wishlist' && <WishlistApp />}
         {currentApp === 'jobs' && <JobsApp />}
         {currentApp === 'period' && <PeriodApp />}
+        {currentApp === 'chores' && <ChoresApp />}
       </main>
 
       {/* Minimal Footer */}

@@ -7,7 +7,8 @@ import {
   KeyRound,
   Gift,
   Briefcase,
-  CalendarHeart
+  CalendarHeart,
+  CheckSquare
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -19,7 +20,8 @@ export const MOBILE_NAV_ITEMS = [
   { id: 'vault', name: 'Vault', icon: KeyRound },
   { id: 'wishlist', name: 'Wishlist', icon: Gift },
   { id: 'jobs', name: 'Jobs', icon: Briefcase },
-  { id: 'period', name: 'Period', icon: CalendarHeart }
+  { id: 'period', name: 'Period', icon: CalendarHeart },
+  { id: 'chores', name: 'Chores', icon: CheckSquare }
 ];
 
 export function MobileNavBar() {
