@@ -101,7 +101,7 @@ export function DeadlinesApp() {
     title: '',
     date: '',
     category: '',
-    recurring: 'none', // 'none' (One-Time) or 'yearly'
+    recurring: 'none', // 'none' (One Time) or 'yearly'
     notes: ''
   });
 
@@ -141,15 +141,15 @@ export function DeadlinesApp() {
     return enrichedDeadlines.filter(d => d.isToday);
   }, [enrichedDeadlines]);
 
-  // Find the single next upcoming event (daysLeft >= 0, nearest first)
-  const nextUpcomingEvent = useMemo(() => {
-    const upcoming = enrichedDeadlines
+  // Top 3 Upcoming Events (daysLeft >= 0, nearest first)
+  const top3Upcoming = useMemo(() => {
+    return enrichedDeadlines
       .filter(d => d.daysLeft >= 0)
-      .sort((a, b) => a.daysLeft - b.daysLeft);
-    return upcoming.length > 0 ? upcoming[0] : null;
+      .sort((a, b) => a.daysLeft - b.daysLeft)
+      .slice(0, 3);
   }, [enrichedDeadlines]);
 
-  // Filtered & sorted list for view
+  // Filtered & sorted list for bottom view
   const filteredDeadlines = useMemo(() => {
     let list = [...enrichedDeadlines];
 
@@ -268,131 +268,217 @@ export function DeadlinesApp() {
         </button>
       </div>
 
-      {/* Hero Spotlight: Today's Date / Today's Event & Next Upcoming Event */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        {/* Card 1: Today's Status (If no event today, prominently shows today's date) */}
-        <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-xs flex flex-col justify-between relative overflow-hidden">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-black/40 flex items-center gap-1.5">
-              <Calendar size={13} />
+      {/* Hero Spotlight: Today's Date Banner */}
+      <div className="mb-6 rounded-2xl border border-black/10 bg-white p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-black text-white shadow-xs">
+            <Calendar size={20} />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-widest text-black/40">
+              Today's Date
+            </div>
+            <div className="text-lg sm:text-xl font-bold text-black tracking-tight">
+              {today.formattedLong}
+            </div>
+          </div>
+        </div>
+
+        {todaysEvents.length > 0 ? (
+          <div className="flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-xs font-bold text-white shadow-xs">
+            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] uppercase tracking-wider">
               Today
             </span>
-            {todaysEvents.length > 0 && (
-              <span className="rounded-full bg-black px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                Event Today
-              </span>
+            <span>{todaysEvents[0].title}</span>
+            {todaysEvents[0].category && (
+              <span className="text-white/60">({todaysEvents[0].category})</span>
+            )}
+            {todaysEvents.length > 1 && (
+              <span className="text-white/60">+{todaysEvents.length - 1} more</span>
             )}
           </div>
-
-          {todaysEvents.length > 0 ? (
-            <div>
-              <div className="text-2xl font-bold text-black tracking-tight">
-                {todaysEvents[0].title}
-              </div>
-              <p className="mt-1 text-sm font-medium text-black/60 flex items-center gap-2">
-                <span>{today.formattedLong}</span>
-                {todaysEvents[0].category && (
-                  <>
-                    <span>•</span>
-                    <span className="font-semibold text-black">{todaysEvents[0].category}</span>
-                  </>
-                )}
-              </p>
-              {todaysEvents[0].notes && (
-                <p className="mt-2 text-xs text-black/50 line-clamp-1 italic">
-                  "{todaysEvents[0].notes}"
-                </p>
-              )}
-              {todaysEvents.length > 1 && (
-                <div className="mt-3 text-xs font-semibold text-black/70">
-                  +{todaysEvents.length - 1} more event today
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>
-              <div className="text-xs text-black/50 font-medium">Today's Date</div>
-              <div className="mt-1 text-2xl font-bold text-black tracking-tight sm:text-3xl">
-                {today.formattedLong}
-              </div>
-              <p className="mt-2 text-xs font-medium text-black/50 flex items-center gap-1.5">
-                <span>No deadlines or events scheduled for today.</span>
-              </p>
-            </div>
-          )}
-
-          <div className="mt-4 pt-3 border-t border-black/5 flex items-center justify-between text-xs text-black/40">
-            <span>Date & Calendar Sync</span>
-            <span>Live Countdown</span>
+        ) : (
+          <div className="text-xs font-semibold text-black/50 bg-black/5 px-3 py-1.5 rounded-xl border border-black/5">
+            No deadlines scheduled for today
           </div>
+        )}
+      </div>
+
+      {/* 3 Upcoming Events Spotlight Board */}
+      <div className="mb-8">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock size={16} className="text-black" />
+            <h2 className="text-sm font-bold uppercase tracking-wider text-black">
+              3 Upcoming Events
+            </h2>
+          </div>
+          <span className="text-xs text-black/40">
+            Next dates to remember
+          </span>
         </div>
 
-        {/* Card 2: Next Date to Remember Countdown */}
-        <div className="rounded-2xl border border-black bg-black p-6 text-white shadow-sm flex flex-col justify-between relative overflow-hidden">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-white/50 flex items-center gap-1.5">
-              <Clock size={13} />
-              Next Date to Remember
-            </span>
-            {nextUpcomingEvent?.category && (
-              <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                {nextUpcomingEvent.category}
-              </span>
-            )}
+        {top3Upcoming.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-black/20 bg-white/50 p-8 text-center">
+            <Clock size={32} className="mx-auto text-black/20 mb-2" />
+            <h3 className="text-sm font-bold text-black">No upcoming events</h3>
+            <p className="mt-1 text-xs text-black/50">
+              Add birthdays, exams or deadlines to track your next 3 upcoming dates.
+            </p>
+            <button
+              onClick={() => openAddModal()}
+              className="mt-3.5 inline-flex items-center gap-1.5 rounded-xl bg-black px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-black/80 transition"
+            >
+              <Plus size={14} /> Add First Event
+            </button>
           </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            {[0, 1, 2].map((slotIndex) => {
+              const item = top3Upcoming[slotIndex];
+              const slotLabel = `#${slotIndex + 1} Upcoming`;
 
-          {nextUpcomingEvent ? (
-            <div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl sm:text-5xl font-black tracking-tight text-white">
-                  {nextUpcomingEvent.daysLeft}
-                </span>
-                <span className="text-base sm:text-lg font-medium text-white/70">
-                  {nextUpcomingEvent.daysLeft === 0
-                    ? 'today'
-                    : nextUpcomingEvent.daysLeft === 1
-                    ? 'day left'
-                    : 'days left'}
-                </span>
-              </div>
-              <div className="mt-2 text-lg font-bold text-white tracking-tight">
-                {nextUpcomingEvent.title}
-              </div>
-              <p className="mt-0.5 text-xs text-white/60 flex items-center gap-2">
-                <span>{formatTargetDate(nextUpcomingEvent.date, nextUpcomingEvent.recurring)}</span>
-                {nextUpcomingEvent.recurring === 'yearly' && (
-                  <>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Repeat size={11} />
-                      Yearly
+              if (!item) {
+                return (
+                  <button
+                    key={`empty-${slotIndex}`}
+                    onClick={() => openAddModal()}
+                    className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-black/20 bg-white/40 p-5 text-center hover:border-black/40 hover:bg-white/80 transition group min-h-[160px]"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/5 text-black/40 group-hover:bg-black group-hover:text-white transition">
+                      <Plus size={16} />
+                    </div>
+                    <span className="mt-2 text-xs font-bold text-black/40 group-hover:text-black">
+                      {slotLabel}
                     </span>
-                  </>
-                )}
-              </p>
-            </div>
-          ) : (
-            <div>
-              <div className="text-2xl font-bold text-white tracking-tight">
-                No upcoming events
-              </div>
-              <p className="mt-1 text-xs text-white/60">
-                Add birthdays, exams or important dates to start your countdowns.
-              </p>
-              <button
-                onClick={() => openAddModal()}
-                className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-black hover:bg-white/90 transition"
-              >
-                <Plus size={14} /> Add First Event
-              </button>
-            </div>
-          )}
+                    <span className="text-[11px] text-black/30 mt-0.5">
+                      Tap to add event
+                    </span>
+                  </button>
+                );
+              }
 
-          <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-white/40">
-            <span>OnlyD Reminders</span>
-            <span>Never miss a date</span>
+              const Icon = getCategoryIcon(item.category);
+              const isFirst = slotIndex === 0;
+
+              return (
+                <div
+                  key={item.id}
+                  className={`flex flex-col justify-between rounded-2xl p-5 shadow-xs transition relative overflow-hidden ${
+                    isFirst
+                      ? 'bg-black text-white border border-black shadow-sm'
+                      : 'bg-white text-black border border-black/10 hover:border-black/30'
+                  }`}
+                >
+                  {/* Top Slot Header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                        isFirst ? 'bg-white/20 text-white' : 'bg-black/5 text-black/60'
+                      }`}
+                    >
+                      {slotIndex === 0 ? 'Next Event' : slotLabel}
+                    </span>
+                    {item.category && (
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                          isFirst ? 'bg-white/10 text-white/80' : 'bg-black/5 text-black/70'
+                        }`}
+                      >
+                        {item.category}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Main Countdown & Title */}
+                  <div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span
+                        className={`text-3xl sm:text-4xl font-black tracking-tight ${
+                          isFirst ? 'text-white' : 'text-black'
+                        }`}
+                      >
+                        {item.daysLeft}
+                      </span>
+                      <span
+                        className={`text-xs font-semibold ${
+                          isFirst ? 'text-white/70' : 'text-black/50'
+                        }`}
+                      >
+                        {item.daysLeft === 0
+                          ? 'today'
+                          : item.daysLeft === 1
+                          ? 'day left'
+                          : 'days left'}
+                      </span>
+                    </div>
+
+                    <h3
+                      className={`mt-2 text-base font-bold tracking-tight truncate ${
+                        isFirst ? 'text-white' : 'text-black'
+                      }`}
+                      title={item.title}
+                    >
+                      {item.title}
+                    </h3>
+
+                    <p
+                      className={`mt-0.5 text-xs flex items-center gap-1.5 ${
+                        isFirst ? 'text-white/60' : 'text-black/50'
+                      }`}
+                    >
+                      <span>{formatTargetDate(item.date, item.recurring)}</span>
+                      {item.recurring === 'yearly' && (
+                        <>
+                          <span>•</span>
+                          <span className="flex items-center gap-0.5">
+                            <Repeat size={10} />
+                            Yearly
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Action row */}
+                  <div
+                    className={`mt-3 pt-2.5 border-t flex items-center justify-between text-xs ${
+                      isFirst ? 'border-white/10 text-white/50' : 'border-black/5 text-black/40'
+                    }`}
+                  >
+                    <span className="text-[10px]">
+                      {item.recurring === 'yearly' ? 'Yearly' : 'One Time'}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => openEditModal(item)}
+                        className={`p-1 rounded-md transition ${
+                          isFirst
+                            ? 'hover:bg-white/10 text-white/70 hover:text-white'
+                            : 'hover:bg-black/5 text-black/60 hover:text-black'
+                        }`}
+                        title="Edit"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className={`p-1 rounded-md transition ${
+                          isFirst
+                            ? 'hover:bg-white/10 text-white/50 hover:text-white'
+                            : 'hover:bg-black/5 text-black/40 hover:text-black'
+                        }`}
+                        title="Delete"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Controls: Search, Tabs & Dynamic Category Pills */}
@@ -487,7 +573,7 @@ export function DeadlinesApp() {
         )}
       </div>
 
-      {/* Deadlines List */}
+      {/* All Deadlines List */}
       {filteredDeadlines.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-black/20 bg-white/50 p-12 text-center">
           <CalendarClock size={36} className="mx-auto text-black/20 mb-3" />
