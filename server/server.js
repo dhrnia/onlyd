@@ -59,7 +59,8 @@ app.get('/api/status', async (req, res) => {
         wishlist: payload.wishlist?.items?.length || 0,
         jobs: payload.jobs?.length || 0,
         periodLogs: payload.period?.logs?.length || 0,
-        chores: payload.chores?.length || 0
+        chores: payload.chores?.length || 0,
+        meals: payload.meals?.length || 0
       }
     });
   } catch (err) {
@@ -532,6 +533,30 @@ app.put('/api/chores/:id', async (req, res) => {
 app.delete('/api/chores/:id', async (req, res) => {
   await dbRun('DELETE FROM chores WHERE id = ?', [req.params.id]);
   res.json({ success: true, id: req.params.id });
+});
+
+// 9. MEAL PLAN
+app.get('/api/meals', async (req, res) => {
+  const payload = await getFullPayload();
+  res.json(payload.meals || []);
+});
+
+app.put('/api/meals/:day', async (req, res) => {
+  const day = req.params.day;
+  const m = req.body;
+  const now = new Date().toISOString();
+  await dbRun(`
+    INSERT OR REPLACE INTO meal_plans (day, morning, meals, evening, notes, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `, [
+    day,
+    m.morning || '',
+    m.meals || '',
+    m.evening || '',
+    m.notes || '',
+    now
+  ]);
+  res.json({ ...m, day, updatedAt: now });
 });
 
 // Client SPA fallback

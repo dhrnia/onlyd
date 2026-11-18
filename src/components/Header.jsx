@@ -8,6 +8,7 @@ import {
   Briefcase,
   CalendarHeart,
   CheckSquare,
+  Utensils,
   Home,
   RefreshCw,
   Database,
@@ -27,6 +28,7 @@ export const APPS = [
   { id: 'jobs', name: 'Jobs', icon: Briefcase, desc: 'Application tracker' },
   { id: 'period', name: 'Period', icon: CalendarHeart, desc: 'Cycle & phase tracker' },
   { id: 'chores', name: 'Chores', icon: CheckSquare, desc: 'Recurring task schedule' },
+  { id: 'meals', name: 'Meal Plan', icon: Utensils, desc: 'Weekly recurring plan' },
 ];
 
 export function Header() {

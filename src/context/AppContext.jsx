@@ -32,6 +32,7 @@ const INITIAL_DATA = {
     logs: []
   },
   chores: [],
+  meals: [],
   meta: {
     version: "1.0",
     lastUpdated: null
@@ -50,7 +51,8 @@ function hasContent(d) {
     (d.wishlist?.items?.length || 0) > 0 ||
     (d.jobs?.length || 0) > 0 ||
     (d.period?.logs?.length || 0) > 0 ||
-    (d.chores?.length || 0) > 0
+    (d.chores?.length || 0) > 0 ||
+    (d.meals?.length || 0) > 0
   );
 }
 
@@ -58,7 +60,7 @@ export function AppProvider({ children }) {
   // Navigation
   const [currentApp, setCurrentApp] = useState(() => {
     const hash = window.location.hash.replace('#/', '').replace('#', '');
-    return ['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs', 'period', 'chores'].includes(hash) ? hash : 'home';
+    return ['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs', 'period', 'chores', 'meals'].includes(hash) ? hash : 'home';
   });
 
   // Main Data State (cached in localStorage)
@@ -95,7 +97,7 @@ export function AppProvider({ children }) {
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace('#/', '').replace('#', '');
-      if (['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs', 'period', 'chores'].includes(hash)) {
+      if (['home', 'shelf', 'budget', 'contacts', 'vault', 'wishlist', 'jobs', 'period', 'chores', 'meals'].includes(hash)) {
         setCurrentApp(hash);
       } else {
         setCurrentApp('home');
@@ -831,6 +833,39 @@ export function AppProvider({ children }) {
     showToast('Marked as done!');
   };
 
+  // Meal Plan Methods
+  const updateMealPlan = (day, updates) => {
+    updateAndSync(prev => {
+      const existing = (prev.meals || []).find(m => m.day === day);
+      let newMeals;
+      if (existing) {
+        newMeals = prev.meals.map(m =>
+          m.day === day ? { ...m, ...updates, updatedAt: new Date().toISOString() } : m
+        );
+      } else {
+        newMeals = [
+          ...(prev.meals || []),
+          { day, morning: '', meals: '', evening: '', notes: '', ...updates, updatedAt: new Date().toISOString() }
+        ];
+      }
+      return {
+        ...prev,
+        meals: newMeals
+      };
+    });
+    showToast(`Saved meal plan for ${day}`);
+  };
+
+  const clearMealPlan = (day) => {
+    updateAndSync(prev => ({
+      ...prev,
+      meals: (prev.meals || []).map(m =>
+        m.day === day ? { day, morning: '', meals: '', evening: '', notes: '', updatedAt: new Date().toISOString() } : m
+      )
+    }));
+    showToast(`Cleared ${day}`);
+  };
+
   // Full Import JSON
   const importDatabase = async (jsonObj) => {
     try {
@@ -919,6 +954,10 @@ export function AppProvider({ children }) {
         updateChore,
         deleteChore,
         completeChore,
+
+        // Meal Plan
+        updateMealPlan,
+        clearMealPlan,
 
         // Import
         importDatabase
