@@ -1,0 +1,16 @@
+# Build dependencies
+node_modules/
+dist/
+
+# Local database file & backups (Render disk will persist it)
+server/data/*.backup.json
+server/data/*.tmp*
+
+# Logs & Environment
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.local
+.DS_Store
+Thumbs.db
