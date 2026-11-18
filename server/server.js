@@ -55,7 +55,8 @@ app.get('/api/status', async (req, res) => {
         vaultPasswords: payload.vault?.passwords?.length || 0,
         vaultLinks: payload.vault?.links?.length || 0,
         wishlist: payload.wishlist?.items?.length || 0,
-        jobs: payload.jobs?.length || 0
+        jobs: payload.jobs?.length || 0,
+        periodLogs: payload.period?.logs?.length || 0
       }
     });
   } catch (err) {
@@ -411,6 +412,68 @@ app.put('/api/jobs/:id', async (req, res) => {
 
 app.delete('/api/jobs/:id', async (req, res) => {
   await dbRun('DELETE FROM job_applications WHERE id = ?', [req.params.id]);
+  res.json({ success: true, id: req.params.id });
+});
+
+// 7. PERIOD TRACKER
+app.get('/api/period', async (req, res) => {
+  const payload = await getFullPayload();
+  res.json(payload.period || { settings: { cycleDuration: 28, periodDuration: 5 }, logs: [] });
+});
+
+app.post('/api/period/settings', async (req, res) => {
+  const { cycleDuration, periodDuration } = req.body;
+  const now = new Date().toISOString();
+  await dbRun(`
+    INSERT OR REPLACE INTO period_settings (id, cycleDuration, periodDuration, updatedAt)
+    VALUES ('default', ?, ?, ?)
+  `, [Number(cycleDuration) || 28, Number(periodDuration) || 5, now]);
+  res.json({ cycleDuration: Number(cycleDuration) || 28, periodDuration: Number(periodDuration) || 5, updatedAt: now });
+});
+
+app.post('/api/period/logs', async (req, res) => {
+  const log = req.body;
+  const id = log.id || `period-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const now = new Date().toISOString();
+  await dbRun(`
+    INSERT INTO period_logs
+    (id, startDate, endDate, flow, notes, symptoms, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `, [
+    id,
+    log.startDate,
+    log.endDate,
+    log.flow || 'Medium',
+    log.notes || '',
+    JSON.stringify(log.symptoms || []),
+    now,
+    now
+  ]);
+  res.json({ ...log, id, createdAt: now, updatedAt: now });
+});
+
+app.put('/api/period/logs/:id', async (req, res) => {
+  const id = req.params.id;
+  const log = req.body;
+  const now = new Date().toISOString();
+  await dbRun(`
+    UPDATE period_logs SET
+      startDate = ?, endDate = ?, flow = ?, notes = ?, symptoms = ?, updatedAt = ?
+    WHERE id = ?
+  `, [
+    log.startDate,
+    log.endDate,
+    log.flow || 'Medium',
+    log.notes || '',
+    JSON.stringify(log.symptoms || []),
+    now,
+    id
+  ]);
+  res.json({ ...log, id, updatedAt: now });
+});
+
+app.delete('/api/period/logs/:id', async (req, res) => {
+  await dbRun('DELETE FROM period_logs WHERE id = ?', [req.params.id]);
   res.json({ success: true, id: req.params.id });
 });
 

@@ -6,6 +6,7 @@ import {
   KeyRound,
   Gift,
   Briefcase,
+  CalendarHeart,
   Home,
   RefreshCw,
   Database,
@@ -23,6 +24,7 @@ export const APPS = [
   { id: 'vault', name: 'Vault', icon: KeyRound, desc: 'Passwords & links' },
   { id: 'wishlist', name: 'Wishlist', icon: Gift, desc: 'Priorities & pricing' },
   { id: 'jobs', name: 'Jobs', icon: Briefcase, desc: 'Application tracker' },
+  { id: 'period', name: 'Period', icon: CalendarHeart, desc: 'Cycle & phase tracker' },
 ];
 
 export function Header() {
