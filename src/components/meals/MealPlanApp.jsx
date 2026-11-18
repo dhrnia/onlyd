@@ -180,10 +180,9 @@ export function MealPlanApp() {
                 )}
               </div>
             </div>
-            <div className="mt-4 text-[10px] text-black/40 font-medium">Breakfast / Coffee</div>
           </div>
 
-          {/* Meals (Lunch) Slot */}
+          {/* Meals Slot */}
           <div className="flex flex-col justify-between rounded-2xl border border-black/10 bg-[#fafafa] p-4.5 transition hover:border-black/30">
             <div>
               <div className="flex items-center gap-2 text-black/70">
@@ -202,7 +201,6 @@ export function MealPlanApp() {
                 )}
               </div>
             </div>
-            <div className="mt-4 text-[10px] text-black/40 font-medium">Lunch / Main Meal</div>
           </div>
 
           {/* Evening Slot */}
@@ -224,7 +222,6 @@ export function MealPlanApp() {
                 )}
               </div>
             </div>
-            <div className="mt-4 text-[10px] text-black/40 font-medium">Dinner / Snacks</div>
           </div>
         </div>
 
@@ -372,11 +369,11 @@ export function MealPlanApp() {
               <div>
                 <label className="flex items-center gap-1.5 text-xs font-bold text-black mb-1">
                   <Utensils size={12} />
-                  <span>Meals (Lunch)</span>
+                  <span>Meals</span>
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="e.g. Brown rice, dal makhani, paneer bhurji & curd"
+                  placeholder="e.g. Rice, dal, vegetables & salad"
                   value={form.meals}
                   onChange={(e) => setForm({ ...form, meals: e.target.value })}
                   className="w-full rounded-xl border border-black/15 bg-white p-2.5 text-xs text-black focus:border-black focus:outline-none"
@@ -386,11 +383,11 @@ export function MealPlanApp() {
               <div>
                 <label className="flex items-center gap-1.5 text-xs font-bold text-black mb-1">
                   <Sunset size={12} />
-                  <span>Evening (Dinner)</span>
+                  <span>Evening</span>
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="e.g. Grilled tofu salad with avocado dressing"
+                  placeholder="e.g. Light soup, roti or salad"
                   value={form.evening}
                   onChange={(e) => setForm({ ...form, evening: e.target.value })}
                   className="w-full rounded-xl border border-black/15 bg-white p-2.5 text-xs text-black focus:border-black focus:outline-none"
