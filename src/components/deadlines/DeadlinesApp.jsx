@@ -19,31 +19,14 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
-const CATEGORIES = [
-  { id: 'all', name: 'All' },
-  { id: 'Birthday', name: 'Birthdays', icon: Cake },
-  { id: 'Exam', name: 'Exams', icon: GraduationCap },
-  { id: 'Work', name: 'Work', icon: Briefcase },
-  { id: 'Bill', name: 'Bills', icon: Receipt },
-  { id: 'Personal', name: 'Personal', icon: Sparkles },
-  { id: 'General', name: 'General', icon: Calendar }
-];
-
 function getCategoryIcon(cat) {
-  switch (cat) {
-    case 'Birthday':
-      return Cake;
-    case 'Exam':
-      return GraduationCap;
-    case 'Work':
-      return Briefcase;
-    case 'Bill':
-      return Receipt;
-    case 'Personal':
-      return Sparkles;
-    default:
-      return CalendarClock;
-  }
+  const lower = (cat || '').toLowerCase();
+  if (lower.includes('birth')) return Cake;
+  if (lower.includes('exam') || lower.includes('test') || lower.includes('quiz')) return GraduationCap;
+  if (lower.includes('work') || lower.includes('job') || lower.includes('project')) return Briefcase;
+  if (lower.includes('bill') || lower.includes('pay') || lower.includes('rent')) return Receipt;
+  if (lower.includes('anniversary') || lower.includes('celebration')) return Sparkles;
+  return CalendarClock;
 }
 
 function getTodayDetails() {
@@ -79,19 +62,6 @@ function getNextOccurrence(dateStr, recurring) {
       targetYear = today.year + 1;
     }
     return new Date(Date.UTC(targetYear, parsed.month - 1, parsed.day));
-  }
-
-  if (recurring === 'monthly') {
-    let targetYear = today.year;
-    let targetMonth = today.month;
-    if (parsed.day < today.day) {
-      targetMonth += 1;
-      if (targetMonth > 12) {
-        targetMonth = 1;
-        targetYear += 1;
-      }
-    }
-    return new Date(Date.UTC(targetYear, targetMonth - 1, parsed.day));
   }
 
   return new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day));
@@ -130,21 +100,35 @@ export function DeadlinesApp() {
   const [formData, setFormData] = useState({
     title: '',
     date: '',
-    category: 'Birthday',
-    recurring: 'yearly',
+    category: '',
+    recurring: 'none', // 'none' (One-Time) or 'yearly'
     notes: ''
   });
 
   const today = useMemo(() => getTodayDetails(), []);
 
+  // Dynamically extract all existing categories typed by user
+  const existingCategories = useMemo(() => {
+    const set = new Set();
+    deadlines.forEach(d => {
+      const cat = (d.category || '').trim();
+      if (cat) {
+        set.add(cat);
+      }
+    });
+    return Array.from(set);
+  }, [deadlines]);
+
   // Enrich each deadline with daysLeft & nextOccurrence
   const enrichedDeadlines = useMemo(() => {
     return deadlines.map(item => {
-      const daysLeft = calculateDaysLeft(item.date, item.recurring);
-      const nextDate = getNextOccurrence(item.date, item.recurring);
+      const recurring = item.recurring === 'yearly' ? 'yearly' : 'none';
+      const daysLeft = calculateDaysLeft(item.date, recurring);
+      const nextDate = getNextOccurrence(item.date, recurring);
       const isToday = daysLeft === 0;
       return {
         ...item,
+        recurring,
         daysLeft,
         nextDate,
         isToday
@@ -183,7 +167,7 @@ export function DeadlinesApp() {
 
     // Category filter
     if (selectedCategory !== 'all') {
-      list = list.filter(d => d.category === selectedCategory);
+      list = list.filter(d => (d.category || '').trim().toLowerCase() === selectedCategory.toLowerCase());
     }
 
     // Search query
@@ -199,13 +183,13 @@ export function DeadlinesApp() {
     return list;
   }, [enrichedDeadlines, filterTab, selectedCategory, searchQuery]);
 
-  const openAddModal = (presetCategory = 'Birthday') => {
+  const openAddModal = (presetCategory = '') => {
     setEditingItem(null);
     setFormData({
       title: '',
       date: today.dateStr,
       category: presetCategory,
-      recurring: presetCategory === 'Birthday' ? 'yearly' : 'none',
+      recurring: 'none',
       notes: ''
     });
     setIsModalOpen(true);
@@ -216,8 +200,8 @@ export function DeadlinesApp() {
     setFormData({
       title: item.title,
       date: item.date,
-      category: item.category || 'General',
-      recurring: item.recurring || 'none',
+      category: item.category || '',
+      recurring: item.recurring === 'yearly' ? 'yearly' : 'none',
       notes: item.notes || ''
     });
     setIsModalOpen(true);
@@ -227,10 +211,16 @@ export function DeadlinesApp() {
     e.preventDefault();
     if (!formData.title.trim() || !formData.date) return;
 
+    const payload = {
+      ...formData,
+      category: formData.category.trim() || 'General',
+      recurring: formData.recurring === 'yearly' ? 'yearly' : 'none'
+    };
+
     if (editingItem) {
-      updateDeadline(editingItem.id, formData);
+      updateDeadline(editingItem.id, payload);
     } else {
-      addDeadline(formData);
+      addDeadline(payload);
     }
     setIsModalOpen(false);
   };
@@ -264,7 +254,7 @@ export function DeadlinesApp() {
               Deadlines
             </h1>
             <p className="text-xs sm:text-sm text-black/60">
-              Countdowns for Birthdays, Exams, Bills & Events
+              Countdowns for Birthdays, Exams & Important Dates
             </p>
           </div>
         </div>
@@ -301,8 +291,12 @@ export function DeadlinesApp() {
               </div>
               <p className="mt-1 text-sm font-medium text-black/60 flex items-center gap-2">
                 <span>{today.formattedLong}</span>
-                <span>•</span>
-                <span className="font-semibold text-black">{todaysEvents[0].category}</span>
+                {todaysEvents[0].category && (
+                  <>
+                    <span>•</span>
+                    <span className="font-semibold text-black">{todaysEvents[0].category}</span>
+                  </>
+                )}
               </p>
               {todaysEvents[0].notes && (
                 <p className="mt-2 text-xs text-black/50 line-clamp-1 italic">
@@ -340,7 +334,7 @@ export function DeadlinesApp() {
               <Clock size={13} />
               Next Date to Remember
             </span>
-            {nextUpcomingEvent && (
+            {nextUpcomingEvent?.category && (
               <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                 {nextUpcomingEvent.category}
               </span>
@@ -366,12 +360,12 @@ export function DeadlinesApp() {
               </div>
               <p className="mt-0.5 text-xs text-white/60 flex items-center gap-2">
                 <span>{formatTargetDate(nextUpcomingEvent.date, nextUpcomingEvent.recurring)}</span>
-                {nextUpcomingEvent.recurring !== 'none' && (
+                {nextUpcomingEvent.recurring === 'yearly' && (
                   <>
                     <span>•</span>
                     <span className="flex items-center gap-1">
                       <Repeat size={11} />
-                      {nextUpcomingEvent.recurring}
+                      Yearly
                     </span>
                   </>
                 )}
@@ -383,7 +377,7 @@ export function DeadlinesApp() {
                 No upcoming events
               </div>
               <p className="mt-1 text-xs text-white/60">
-                Add birthdays, exams or bill dates to start your countdowns.
+                Add birthdays, exams or important dates to start your countdowns.
               </p>
               <button
                 onClick={() => openAddModal()}
@@ -401,7 +395,7 @@ export function DeadlinesApp() {
         </div>
       </div>
 
-      {/* Controls: Search & Tabs & Category Pills */}
+      {/* Controls: Search, Tabs & Dynamic Category Pills */}
       <div className="space-y-4 mb-6">
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
           {/* Search Bar */}
@@ -409,7 +403,7 @@ export function DeadlinesApp() {
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-black/40" />
             <input
               type="text"
-              placeholder="Search birthdays, exams, bills..."
+              placeholder="Search by event title, category, or notes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-xl border border-black/10 bg-white pl-10 pr-4 py-2.5 text-sm text-black placeholder:text-black/30 focus:border-black focus:outline-none transition shadow-2xs"
@@ -459,27 +453,38 @@ export function DeadlinesApp() {
           </div>
         </div>
 
-        {/* Category Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {CATEGORIES.map(cat => {
-            const isSelected = selectedCategory === cat.id;
-            const Icon = cat.icon;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold shrink-0 transition ${
-                  isSelected
-                    ? 'bg-black text-white shadow-xs'
-                    : 'border border-black/10 bg-white text-black/70 hover:border-black/30'
-                }`}
-              >
-                {Icon && <Icon size={13} />}
-                <span>{cat.name}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Dynamic Category Pills (if user has typed categories) */}
+        {existingCategories.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            <button
+              onClick={() => setSelectedCategory('all')}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold shrink-0 transition ${
+                selectedCategory === 'all'
+                  ? 'bg-black text-white shadow-xs'
+                  : 'border border-black/10 bg-white text-black/70 hover:border-black/30'
+              }`}
+            >
+              <span>All Categories</span>
+            </button>
+            {existingCategories.map(cat => {
+              const isSelected = selectedCategory.toLowerCase() === cat.toLowerCase();
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(isSelected ? 'all' : cat)}
+                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold shrink-0 transition ${
+                    isSelected
+                      ? 'bg-black text-white shadow-xs'
+                      : 'border border-black/10 bg-white text-black/70 hover:border-black/30'
+                  }`}
+                >
+                  <Tag size={12} />
+                  <span>{cat}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Deadlines List */}
@@ -490,7 +495,7 @@ export function DeadlinesApp() {
           <p className="mt-1 text-xs text-black/50">
             {searchQuery
               ? 'Try adjusting your search query.'
-              : 'Add your birthdays, upcoming exams, or bill payment reminders.'}
+              : 'Add your birthdays, upcoming exams, or important dates.'}
           </p>
           <button
             onClick={() => openAddModal()}
@@ -521,13 +526,15 @@ export function DeadlinesApp() {
                         <h3 className="text-base font-bold text-black tracking-tight truncate">
                           {item.title}
                         </h3>
-                        <span className="rounded-md border border-black/10 bg-black/5 px-2 py-0.5 text-[10px] font-semibold text-black/70">
-                          {item.category}
-                        </span>
-                        {item.recurring && item.recurring !== 'none' && (
+                        {item.category && (
+                          <span className="rounded-md border border-black/10 bg-black/5 px-2 py-0.5 text-[10px] font-semibold text-black/70">
+                            {item.category}
+                          </span>
+                        )}
+                        {item.recurring === 'yearly' && (
                           <span className="flex items-center gap-1 rounded-md border border-black/10 bg-black/5 px-2 py-0.5 text-[10px] font-medium text-black/60">
                             <Repeat size={10} />
-                            {item.recurring}
+                            Yearly
                           </span>
                         )}
                       </div>
@@ -577,7 +584,7 @@ export function DeadlinesApp() {
                 {/* Footer Actions */}
                 <div className="mt-4 pt-3 border-t border-black/5 flex items-center justify-between text-xs text-black/40">
                   <span className="text-[11px]">
-                    {item.recurring === 'yearly' ? 'Yearly reminder' : 'Event date'}
+                    {item.recurring === 'yearly' ? 'Yearly reminder' : 'One-time deadline'}
                   </span>
                   <div className="flex items-center gap-1">
                     <button
@@ -628,7 +635,7 @@ export function DeadlinesApp() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Mom's Birthday, GRE Exam, House Rent"
+                  placeholder="e.g. Mom's Birthday, GRE Exam, Passport Renewal"
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                   className="w-full rounded-xl border border-black/15 px-3.5 py-2 text-sm text-black placeholder:text-black/30 focus:border-black focus:outline-none transition shadow-2xs"
@@ -649,49 +656,49 @@ export function DeadlinesApp() {
                 />
               </div>
 
-              {/* Category */}
+              {/* Category (Type field, not fixed) */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-black/70 mb-1.5">
                   Category
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['Birthday', 'Exam', 'Work', 'Bill', 'Personal', 'General'].map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => {
-                        setFormData(prev => ({
-                          ...prev,
-                          category: cat,
-                          recurring: cat === 'Birthday' ? 'yearly' : cat === 'Bill' ? 'monthly' : prev.recurring
-                        }));
-                      }}
-                      className={`rounded-xl py-2 px-2 text-xs font-semibold text-center transition ${
-                        formData.category === cat
-                          ? 'bg-black text-white shadow-xs'
-                          : 'border border-black/10 bg-white text-black/70 hover:border-black/30'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
+                <input
+                  type="text"
+                  placeholder="Type category (e.g. Birthday, Exam, Work, Bill, Personal...)"
+                  value={formData.category}
+                  onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                  className="w-full rounded-xl border border-black/15 px-3.5 py-2 text-sm text-black placeholder:text-black/30 focus:border-black focus:outline-none transition shadow-2xs"
+                />
               </div>
 
-              {/* Recurrence */}
+              {/* Recurrence: Just One Time, Yearly */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-black/70 mb-1.5">
                   Recurrence
                 </label>
-                <select
-                  value={formData.recurring}
-                  onChange={(e) => setFormData(prev => ({ ...prev, recurring: e.target.value }))}
-                  className="w-full rounded-xl border border-black/15 px-3.5 py-2 text-sm text-black bg-white focus:border-black focus:outline-none transition shadow-2xs"
-                >
-                  <option value="none">One-time Event (Exams, Deadlines)</option>
-                  <option value="yearly">Repeats Yearly (Birthdays, Anniversaries)</option>
-                  <option value="monthly">Repeats Monthly (Bills, Subscriptions)</option>
-                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, recurring: 'none' }))}
+                    className={`rounded-xl py-2.5 px-3 text-xs font-bold text-center transition ${
+                      formData.recurring !== 'yearly'
+                        ? 'bg-black text-white shadow-xs'
+                        : 'border border-black/10 bg-white text-black/70 hover:border-black/30'
+                    }`}
+                  >
+                    One Time
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, recurring: 'yearly' }))}
+                    className={`rounded-xl py-2.5 px-3 text-xs font-bold text-center transition ${
+                      formData.recurring === 'yearly'
+                        ? 'bg-black text-white shadow-xs'
+                        : 'border border-black/10 bg-white text-black/70 hover:border-black/30'
+                    }`}
+                  >
+                    Yearly
+                  </button>
+                </div>
               </div>
 
               {/* Notes */}
@@ -701,7 +708,7 @@ export function DeadlinesApp() {
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="e.g. Gift ideas, exam center details, account number"
+                  placeholder="e.g. Gift ideas, exam center details, notes..."
                   value={formData.notes}
                   onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                   className="w-full rounded-xl border border-black/15 px-3.5 py-2 text-sm text-black placeholder:text-black/30 focus:border-black focus:outline-none transition shadow-2xs"
@@ -715,7 +722,7 @@ export function DeadlinesApp() {
                     {previewDaysLeft === 0
                       ? 'Scheduled for Today!'
                       : previewDaysLeft > 0
-                      ? `Countdown: ${previewDaysLeft} days left`
+                      ? `Countdown: ${previewDaysLeft} ${previewDaysLeft === 1 ? 'day' : 'days'} left`
                       : `Event date passed (${Math.abs(previewDaysLeft)} days ago)`}
                   </span>
                 </div>
